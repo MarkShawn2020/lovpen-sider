@@ -355,7 +355,13 @@ export class IndexedDBManager implements DatabaseManager {
 
     const syncQueue = await this.getSyncQueue();
     const lastSyncItem = syncQueue
-      .filter(item => item.data?.userId === userId)
+      .filter(
+        item =>
+          item.data &&
+          typeof item.data === 'object' &&
+          'userId' in item.data &&
+          (item.data as { userId?: string }).userId === userId,
+      )
       .sort((a, b) => b.timestamp - a.timestamp)[0];
 
     return {

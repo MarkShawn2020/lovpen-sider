@@ -74,7 +74,10 @@ export class SyncManager {
 
     // 获取上次同步时间
     const lastSyncTimestamp = await dbManager.getSetting('lastSyncTimestamp');
-    const lastSync = lastSyncTimestamp ? new Date(lastSyncTimestamp) : undefined;
+    const lastSync =
+      lastSyncTimestamp && (typeof lastSyncTimestamp === 'string' || typeof lastSyncTimestamp === 'number')
+        ? new Date(lastSyncTimestamp)
+        : undefined;
 
     // 获取最后一个错误
     const failedItems = queue.filter((item: SyncQueueItem) => item.retryCount >= this.maxRetries);

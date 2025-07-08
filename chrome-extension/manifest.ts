@@ -40,7 +40,7 @@ const manifest = {
   action: {
     default_popup: 'popup/index.html',
     default_icon: 'icon-34.png',
-    default_title: '打开 Super-Sider',
+    default_title: '打开 Super Sider',
   },
   icons: {
     '16': 'icon-34.png',
