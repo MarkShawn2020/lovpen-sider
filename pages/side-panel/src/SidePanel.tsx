@@ -1,8 +1,126 @@
 import '@src/SidePanel.css';
 import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
-import { exampleThemeStorage, domPathStorage } from '@extension/storage';
+import { exampleThemeStorage, domPathStorage, downloadSettingsStorage } from '@extension/storage';
 import { cn, ErrorDisplay, LoadingSpinner } from '@extension/ui';
 import { useState, useEffect } from 'react';
+
+// 下载设置面板组件
+const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
+  const [settings, setSettings] = useState({
+    askForLocation: true,
+    useDefaultPath: false,
+    defaultPath: 'Downloads',
+    lastUsedPath: 'Downloads',
+  });
+
+  useEffect(() => {
+    // 加载当前设置
+    const loadSettings = async () => {
+      try {
+        const currentSettings = await downloadSettingsStorage.getSettings();
+        setSettings(currentSettings);
+      } catch (error) {
+        console.error('加载设置失败:', error);
+      }
+    };
+
+    loadSettings();
+
+    // 监听存储变化以实时更新
+    const handleStorageChange = () => {
+      loadSettings();
+    };
+
+    // 添加存储变化监听器
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
+
+  const updateSetting = async (key: string, value: any) => {
+    try {
+      const newSettings = { ...settings, [key]: value };
+      setSettings(newSettings);
+      await downloadSettingsStorage.updateSettings({ [key]: value });
+    } catch (error) {
+      console.error('更新设置失败:', error);
+    }
+  };
+
+  return (
+    <div className="mb-3 rounded border border-gray-200 bg-white p-3 dark:border-gray-600 dark:bg-gray-900">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="text-sm font-medium">下载设置</h4>
+        <button
+          onClick={onClose}
+          className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600">
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {/* 是否询问位置 */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-gray-700 dark:text-gray-300">每次询问保存位置</label>
+          <input
+            type="checkbox"
+            checked={settings.askForLocation}
+            onChange={e => updateSetting('askForLocation', e.target.checked)}
+            className="rounded"
+          />
+        </div>
+
+        {/* 使用默认路径 */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-gray-700 dark:text-gray-300">使用默认路径</label>
+          <input
+            type="checkbox"
+            checked={settings.useDefaultPath}
+            disabled={settings.askForLocation}
+            onChange={e => updateSetting('useDefaultPath', e.target.checked)}
+            className="rounded disabled:opacity-50"
+          />
+        </div>
+
+        {/* 默认路径输入 */}
+        {settings.useDefaultPath && !settings.askForLocation && (
+          <div>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">默认下载路径</label>
+            <input
+              type="text"
+              value={settings.defaultPath}
+              onChange={e => updateSetting('defaultPath', e.target.value)}
+              placeholder="Downloads"
+              className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-800"
+            />
+          </div>
+        )}
+
+        {/* 最后使用的路径显示 */}
+        {settings.lastUsedPath && settings.lastUsedPath !== 'Downloads' && (
+          <div>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">最后使用的路径</label>
+            <div className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              {settings.lastUsedPath}
+            </div>
+          </div>
+        )}
+
+        {/* 下载说明 */}
+        {!settings.askForLocation && (
+          <div className="mt-2 rounded bg-yellow-50 p-2 text-xs text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+            <div className="mb-1 font-medium">⚠️ 注意</div>
+            <div>
+              如果Chrome浏览器设置中开启了"下载前询问每个文件的保存位置"，仍然会显示保存对话框。这是浏览器级别的限制，扩展无法绕过。
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // 先创建一个简单的测试版本
 const SimpleCaptureModule = () => {
@@ -13,6 +131,7 @@ const SimpleCaptureModule = () => {
   const [editPathValue, setEditPathValue] = useState('');
   const [pathError, setPathError] = useState('');
   const [currentUrl, setCurrentUrl] = useState('');
+  const [showDownloadSettings, setShowDownloadSettings] = useState(false);
 
   // 初始化和URL监听
   useEffect(() => {
@@ -183,7 +302,7 @@ const SimpleCaptureModule = () => {
     }
   };
 
-  const downloadMarkdown = () => {
+  const downloadMarkdown = async () => {
     if (!markdownOutput) return;
 
     try {
@@ -191,24 +310,94 @@ const SimpleCaptureModule = () => {
       const slug = extractSlugFromMarkdown(markdownOutput);
       const filename = `${slug}.md`;
 
-      // 创建 Blob 对象
-      const blob = new Blob([markdownOutput], { type: 'text/markdown;charset=utf-8' });
+      // 获取下载设置
+      const settings = await downloadSettingsStorage.getSettings();
 
-      // 创建下载链接
+      // 统一使用 Chrome downloads API
+      await downloadWithChromeAPI(filename, settings);
+    } catch (error) {
+      console.error('下载失败:', error);
+      // 最终回退方案
+      fallbackDownload();
+    }
+  };
+
+  const downloadWithChromeAPI = async (filename: string, settings: any) => {
+    // 创建数据URL
+    const dataUrl = `data:text/markdown;charset=utf-8,${encodeURIComponent(markdownOutput)}`;
+
+    // 根据设置决定下载行为
+    const downloadOptions: chrome.downloads.DownloadOptions = {
+      url: dataUrl,
+      filename: filename,
+    };
+
+    // 严格根据用户设置决定是否显示保存对话框
+    if (settings.askForLocation) {
+      downloadOptions.saveAs = true;
+    } else {
+      // 用户明确不想询问位置，强制不显示对话框
+      downloadOptions.saveAs = false;
+
+      if (settings.useDefaultPath && settings.defaultPath) {
+        // 使用默认路径（相对于Downloads）
+        downloadOptions.filename = `${settings.defaultPath}/${filename}`;
+      } else {
+        // 直接下载到Downloads文件夹
+        downloadOptions.filename = filename;
+      }
+    }
+
+    // 使用 Chrome downloads API
+    const downloadId = await chrome.downloads.download(downloadOptions);
+
+    // 监听下载完成事件以更新最后使用的路径
+    const onDownloadChanged = (delta: chrome.downloads.DownloadDelta) => {
+      if (delta.id === downloadId && delta.state?.current === 'complete') {
+        chrome.downloads.search({ id: downloadId }, async results => {
+          if (results.length > 0) {
+            const downloadedFile = results[0];
+            if (downloadedFile.filename) {
+              // 提取目录路径
+              const pathParts = downloadedFile.filename.split(/[/\\]/);
+              pathParts.pop(); // 移除文件名
+              const directoryPath = pathParts.join('/') || 'Downloads';
+
+              if (directoryPath && directoryPath !== 'Downloads') {
+                await downloadSettingsStorage.setLastUsedPath(directoryPath);
+              }
+            }
+          }
+        });
+
+        // 移除监听器
+        chrome.downloads.onChanged.removeListener(onDownloadChanged);
+      }
+    };
+
+    chrome.downloads.onChanged.addListener(onDownloadChanged);
+  };
+
+  const fallbackDownload = () => {
+    if (!markdownOutput) return;
+
+    try {
+      const slug = extractSlugFromMarkdown(markdownOutput);
+      const filename = `${slug}.md`;
+
+      const blob = new Blob([markdownOutput], { type: 'text/markdown;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
 
-      // 触发下载
       document.body.appendChild(a);
       a.click();
 
-      // 清理
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('下载失败:', error);
+      console.error('回退下载失败:', error);
     }
   };
 
@@ -422,6 +611,11 @@ const SimpleCaptureModule = () => {
                   📥 下载
                 </button>
                 <button
+                  onClick={() => setShowDownloadSettings(!showDownloadSettings)}
+                  className="rounded bg-blue-100 px-2 py-1 text-sm text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
+                  ⚙️
+                </button>
+                <button
                   onClick={copyToClipboard}
                   className="rounded bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                   📋 复制
@@ -433,6 +627,10 @@ const SimpleCaptureModule = () => {
                 </button>
               </div>
             </div>
+
+            {/* 下载设置面板 */}
+            {showDownloadSettings && <DownloadSettingsPanel onClose={() => setShowDownloadSettings(false)} />}
+
             <pre className="flex-1 overflow-auto rounded bg-gray-100 p-4 text-sm dark:bg-gray-800">
               {markdownOutput}
             </pre>

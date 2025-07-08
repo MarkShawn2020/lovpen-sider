@@ -92,6 +92,7 @@ export default config(
       'import-x/no-duplicates': ['error', { considerQueryString: true, 'prefer-inline': false }],
       'import-x/consistent-type-specifier-style': 'error',
       'import-x/first': 'error',
+      'jsx-a11y/label-has-associated-control': 'warn',
     },
     linterOptions: {
       reportUnusedDisableDirectives: 'error',

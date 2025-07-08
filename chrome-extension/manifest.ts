@@ -31,7 +31,7 @@ const manifest = {
   version: packageJson.version,
   description: '__MSG_extensionDescription__',
   host_permissions: ['http://*/*', 'https://*/*', 'https://*.supabase.co/*'],
-  permissions: ['storage', 'scripting', 'tabs', 'sidePanel', 'activeTab', 'identity'],
+  permissions: ['storage', 'scripting', 'tabs', 'sidePanel', 'activeTab', 'identity', 'downloads'],
   options_page: 'options/index.html',
   background: {
     service_worker: 'background.js',
