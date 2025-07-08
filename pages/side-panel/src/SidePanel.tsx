@@ -8,22 +8,26 @@ import { useState, useEffect } from 'react';
 const SimpleCaptureModule = () => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [markdownOutput, setMarkdownOutput] = useState('');
+  const [domPath, setDomPath] = useState('');
 
   useEffect(() => {
     // 监听来自内容脚本的消息
     const messageListener = (request: unknown, _sender: unknown, sendResponse: (response?: unknown) => void) => {
       if (!request || typeof request !== 'object') return;
 
-      const msg = request as { action?: string; markdown?: string };
+      const msg = request as { action?: string; markdown?: string; domPath?: string };
       if (msg.action === 'elementSelected') {
         setMarkdownOutput(msg.markdown || '');
+        setDomPath(msg.domPath || '');
         setIsSelecting(false);
         sendResponse({ success: true });
       } else if (msg.action === 'elementDataUpdate') {
         setMarkdownOutput(msg.markdown || '');
+        setDomPath(msg.domPath || '');
         sendResponse({ success: true });
       } else if (msg.action === 'selectionStopped') {
         setIsSelecting(false);
+        setDomPath('');
         sendResponse({ success: true });
       } else if (msg.action === 'navigationExited') {
         setIsSelecting(false);
@@ -58,6 +62,16 @@ const SimpleCaptureModule = () => {
     }
   };
 
+  const smartSelect = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      await chrome.tabs.sendMessage(tab.id!, { action: 'smartSelect' });
+      setIsSelecting(false);
+    } catch (error) {
+      console.error('智能选择失败:', error);
+    }
+  };
+
   const copyToClipboard = async () => {
     if (!markdownOutput) return;
 
@@ -69,34 +83,79 @@ const SimpleCaptureModule = () => {
     }
   };
 
+  const clearContent = () => {
+    setMarkdownOutput('');
+    setDomPath('');
+  };
+
+  const copyDomPath = async () => {
+    if (!domPath) return;
+
+    try {
+      await navigator.clipboard.writeText(domPath);
+      // 可以添加一个简单的提示
+    } catch (error) {
+      console.error('复制DOM路径失败:', error);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col p-4">
       <h2 className="mb-4 text-lg font-semibold">页面捕获</h2>
 
-      <div className="mb-4">
-        {!isSelecting ? (
-          <button
-            onClick={startSelection}
-            className="w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-            🎯 开始选择元素
+      <div className="mb-4 space-y-2">
+        <div className="flex space-x-2">
+          {!isSelecting ? (
+            <button
+              onClick={startSelection}
+              className="flex-1 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+              🎯 开始选择元素
+            </button>
+          ) : (
+            <button onClick={stopSelection} className="flex-1 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+              ⏹️ 停止选择
+            </button>
+          )}
+          <button onClick={smartSelect} className="flex-1 rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">
+            🤖 智能选择
           </button>
-        ) : (
-          <button onClick={stopSelection} className="w-full rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700">
-            ⏹️ 停止选择
-          </button>
-        )}
+        </div>
       </div>
+
+      {/* DOM路径显示 */}
+      {domPath && (
+        <div className="mb-4 rounded border border-gray-200 p-3 dark:border-gray-600">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-medium">DOM路径</h3>
+            <button
+              onClick={copyDomPath}
+              className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+              📋 复制
+            </button>
+          </div>
+          <code className="block rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            {domPath}
+          </code>
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto">
         {markdownOutput ? (
           <div className="flex h-full flex-col">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-medium">Markdown内容</h3>
-              <button
-                onClick={copyToClipboard}
-                className="rounded bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                📋 复制
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={copyToClipboard}
+                  className="rounded bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                  📋 复制
+                </button>
+                <button
+                  onClick={clearContent}
+                  className="rounded bg-red-100 px-3 py-1 text-sm text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
+                  🗑️ 清空
+                </button>
+              </div>
             </div>
             <pre className="flex-1 overflow-auto rounded bg-gray-100 p-4 text-sm dark:bg-gray-800">
               {markdownOutput}

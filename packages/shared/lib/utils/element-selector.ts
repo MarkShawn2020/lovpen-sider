@@ -5,6 +5,7 @@ export interface ElementSelectionResult {
   markdown: string;
   slug: string;
   element: Element;
+  domPath: string;
 }
 
 export interface ElementSelectorOptions {
@@ -269,12 +270,14 @@ export class ElementSelector {
     const html = this.markdownConverter.getCleanHTML(element);
     const markdown = this.markdownConverter.convertToMarkdown(html, element);
     const slug = this.extractSlugFromMarkdown(markdown);
+    const domPath = this.generateDOMPath(element);
 
     return {
       html,
       markdown,
       slug,
       element,
+      domPath,
     };
   }
 
@@ -293,6 +296,48 @@ export class ElementSelector {
 
     // 如果没有找到slug，生成一个默认的
     return `content-${Date.now()}`;
+  }
+
+  private generateDOMPath(element: Element): string {
+    const path: string[] = [];
+    let current = element;
+
+    while (current && current !== document.body && current !== document.documentElement) {
+      let selector = current.tagName.toLowerCase();
+
+      // 添加ID
+      if (current.id) {
+        selector += `#${current.id}`;
+      }
+
+      // 添加主要的类名（最多3个）
+      if (current.className && typeof current.className === 'string') {
+        const classes = current.className
+          .split(' ')
+          .filter(cls => cls.trim())
+          .slice(0, 3);
+        if (classes.length > 0) {
+          selector += `.${classes.join('.')}`;
+        }
+      }
+
+      // 如果有兄弟元素，添加nth-child
+      if (current.parentElement) {
+        const siblings = Array.from(current.parentElement.children).filter(
+          sibling => sibling.tagName === current.tagName,
+        );
+
+        if (siblings.length > 1) {
+          const index = siblings.indexOf(current as Element) + 1;
+          selector += `:nth-child(${index})`;
+        }
+      }
+
+      path.unshift(selector);
+      current = current.parentElement as Element;
+    }
+
+    return path.join(' > ');
   }
 
   private showStatusMessage(message: string): void {
@@ -337,6 +382,267 @@ export class ElementSelector {
 
   protected onSelectionCancelled(): void {
     console.log('Selection cancelled');
+  }
+
+  // 智能选择功能
+  smartSelect(): void {
+    const mainContent = this.findMainContentElement();
+    if (mainContent) {
+      this.selectedElement = mainContent;
+      this.highlightSelectedElement();
+      this.onElementSelected(mainContent);
+    }
+  }
+
+  private findMainContentElement(): Element | null {
+    // 智能内容检测算法
+    const candidates = this.getContentCandidates();
+    return this.rankContentCandidates(candidates);
+  }
+
+  private getContentCandidates(): Element[] {
+    const candidates: Element[] = [];
+
+    // 1. 语义化HTML5标签
+    const semanticSelectors = [
+      'main',
+      'article',
+      '[role="main"]',
+      '.main',
+      '.content',
+      '.article',
+      '.post',
+      '#main',
+      '#content',
+      '#article',
+      '#post',
+    ];
+
+    semanticSelectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(el => candidates.push(el));
+    });
+
+    // 2. 常见的内容容器类名
+    const contentClassNames = [
+      'content',
+      'main',
+      'article',
+      'post',
+      'body',
+      'text',
+      'story',
+      'entry',
+      'container',
+      'wrapper',
+    ];
+
+    contentClassNames.forEach(className => {
+      const elements = document.querySelectorAll(`[class*="${className}"]`);
+      elements.forEach(el => {
+        if (this.isValidContentElement(el)) {
+          candidates.push(el);
+        }
+      });
+    });
+
+    // 3. 基于文本密度的候选元素
+    const textDenseCandidates = this.findTextDenseElements();
+    candidates.push(...textDenseCandidates);
+
+    // 去重
+    return Array.from(new Set(candidates));
+  }
+
+  private rankContentCandidates(candidates: Element[]): Element | null {
+    if (candidates.length === 0) return null;
+
+    const scored = candidates.map(element => ({
+      element,
+      score: this.calculateContentScore(element),
+    }));
+
+    // 按分数排序
+    scored.sort((a, b) => b.score - a.score);
+
+    return scored[0].element;
+  }
+
+  private calculateContentScore(element: Element): number {
+    let score = 0;
+
+    // 1. 语义化标签加分
+    const tagName = element.tagName.toLowerCase();
+    const semanticTags: { [key: string]: number } = { main: 50, article: 45, section: 20, div: 0 };
+    score += semanticTags[tagName] || 0;
+
+    // 2. 类名和ID加分
+    const className = element.className?.toLowerCase() || '';
+    const id = element.id?.toLowerCase() || '';
+    const goodNames = ['main', 'content', 'article', 'post', 'body', 'text', 'story', 'entry'];
+
+    goodNames.forEach(name => {
+      if (className.includes(name)) score += 30;
+      if (id.includes(name)) score += 35;
+    });
+
+    // 3. 文本密度评分
+    const textDensity = this.calculateTextDensity(element);
+    score += textDensity * 10;
+
+    // 4. 位置评分（中心区域加分）
+    const positionScore = this.calculatePositionScore(element);
+    score += positionScore;
+
+    // 5. 尺寸评分
+    const sizeScore = this.calculateSizeScore(element);
+    score += sizeScore;
+
+    // 6. 结构评分
+    const structureScore = this.calculateStructureScore(element);
+    score += structureScore;
+
+    // 7. 排除不合适的元素
+    if (this.isUnwantedElement(element)) {
+      score -= 100;
+    }
+
+    return score;
+  }
+
+  private calculateTextDensity(element: Element): number {
+    const textContent = element.textContent?.trim() || '';
+    const htmlContent = element.innerHTML || '';
+
+    if (textContent.length === 0) return 0;
+
+    // 计算文本与HTML的比例
+    const textRatio = textContent.length / htmlContent.length;
+
+    // 段落数量
+    const paragraphCount = element.querySelectorAll('p').length;
+
+    // 文本长度评分
+    const textLength = Math.min(textContent.length / 1000, 10);
+
+    return textRatio * 5 + paragraphCount * 2 + textLength;
+  }
+
+  private calculatePositionScore(element: Element): number {
+    const rect = element.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // 中心区域加分
+    const centerX = viewportWidth / 2;
+    const centerY = viewportHeight / 2;
+    const elementCenterX = rect.left + rect.width / 2;
+    const elementCenterY = rect.top + rect.height / 2;
+
+    const distanceFromCenter = Math.sqrt(Math.pow(elementCenterX - centerX, 2) + Math.pow(elementCenterY - centerY, 2));
+
+    const maxDistance = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
+    const centerScore = (1 - distanceFromCenter / maxDistance) * 20;
+
+    return centerScore;
+  }
+
+  private calculateSizeScore(element: Element): number {
+    const rect = element.getBoundingClientRect();
+    const viewportArea = window.innerWidth * window.innerHeight;
+    const elementArea = rect.width * rect.height;
+
+    // 元素占视口的比例
+    const areaRatio = elementArea / viewportArea;
+
+    // 最佳比例在 0.3 - 0.7 之间
+    if (areaRatio >= 0.3 && areaRatio <= 0.7) {
+      return 20;
+    } else if (areaRatio >= 0.1 && areaRatio <= 0.9) {
+      return 10;
+    } else {
+      return 0;
+    }
+  }
+
+  private calculateStructureScore(element: Element): number {
+    let score = 0;
+
+    // 包含标题元素
+    const headings = element.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    score += Math.min(headings.length * 5, 25);
+
+    // 包含段落
+    const paragraphs = element.querySelectorAll('p');
+    score += Math.min(paragraphs.length * 2, 20);
+
+    // 包含列表
+    const lists = element.querySelectorAll('ul, ol');
+    score += Math.min(lists.length * 3, 15);
+
+    // 包含图片
+    const images = element.querySelectorAll('img');
+    score += Math.min(images.length * 2, 10);
+
+    return score;
+  }
+
+  private isUnwantedElement(element: Element): boolean {
+    const className = element.className?.toLowerCase() || '';
+    const id = element.id?.toLowerCase() || '';
+
+    const unwantedKeywords = [
+      'nav',
+      'navigation',
+      'menu',
+      'header',
+      'footer',
+      'sidebar',
+      'aside',
+      'ad',
+      'advertisement',
+      'banner',
+      'promo',
+      'popup',
+      'modal',
+      'comment',
+      'reply',
+      'share',
+      'social',
+      'related',
+      'recommend',
+    ];
+
+    return unwantedKeywords.some(keyword => className.includes(keyword) || id.includes(keyword));
+  }
+
+  private findTextDenseElements(): Element[] {
+    const candidates: Element[] = [];
+    const allElements = document.querySelectorAll('div, section, article, main');
+
+    allElements.forEach(element => {
+      const textDensity = this.calculateTextDensity(element);
+      if (textDensity > 5) {
+        candidates.push(element);
+      }
+    });
+
+    return candidates;
+  }
+
+  private isValidContentElement(element: Element): boolean {
+    const rect = element.getBoundingClientRect();
+    const textContent = element.textContent?.trim() || '';
+
+    // 基本检查
+    if (rect.width < 100 || rect.height < 100) return false;
+    if (textContent.length < 50) return false;
+
+    // 检查是否可见
+    const style = window.getComputedStyle(element);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+    return true;
   }
 
   // 公共方法

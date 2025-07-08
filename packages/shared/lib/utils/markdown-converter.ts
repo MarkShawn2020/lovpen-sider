@@ -1,3 +1,6 @@
+import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
+
 export interface MarkdownConverterOptions {
   includeImages?: boolean;
   includeLists?: boolean;
@@ -9,6 +12,7 @@ export interface MarkdownConverterOptions {
 
 export class MarkdownConverter {
   private options: MarkdownConverterOptions;
+  private turndownService: TurndownService;
 
   constructor(options: MarkdownConverterOptions = {}) {
     this.options = {
@@ -18,21 +22,50 @@ export class MarkdownConverter {
       includeCodeBlocks: true,
       ...options,
     };
+
+    // 初始化 Turndown 服务
+    this.turndownService = new TurndownService({
+      headingStyle: 'atx',
+      bulletListMarker: '-',
+      codeBlockStyle: 'fenced',
+      fence: '```',
+      emDelimiter: '*',
+      strongDelimiter: '**',
+      linkStyle: 'inlined',
+      linkReferenceStyle: 'full',
+    });
+
+    // 添加 GitHub Flavored Markdown 支持（表格、删除线等）
+    this.turndownService.use(gfm);
+
+    // 配置自定义规则
+    this.setupCustomRules();
   }
 
   convertToMarkdown(html: string, element?: Element): string {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-
     // 生成frontmatter
     const frontmatter = this.generateFrontmatter(element);
 
-    // 获取markdown内容
-    const markdownContent = this.htmlToMarkdown(tempDiv);
+    // 使用 Turndown 转换
+    const markdownContent = this.turndownService.turndown(html);
 
     // 组合frontmatter和内容
     return frontmatter + markdownContent;
   }
+
+  getCleanHTML(element: Element): string {
+    const clone = element.cloneNode(true) as Element;
+
+    // 移除script和style标签
+    clone.querySelectorAll('script, style').forEach(el => el.remove());
+
+    // 移除事件处理器属性
+    this.removeEventAttributes(clone);
+
+    return clone.outerHTML;
+  }
+
+  private setupCustomRules(): void {}
 
   private generateFrontmatter(element?: Element): string {
     const now = new Date();
@@ -208,156 +241,6 @@ datetime: ${datetime}
     slug += `-${timestamp}`;
 
     return slug;
-  }
-
-  private htmlToMarkdown(element: Element): string {
-    let markdown = '';
-
-    for (const node of Array.from(element.childNodes)) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent?.trim() || '';
-        if (text) {
-          markdown += text + ' ';
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as Element;
-        const tagName = el.tagName.toLowerCase();
-
-        switch (tagName) {
-          case 'h1':
-            markdown += '# ' + (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'h2':
-            markdown += '## ' + (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'h3':
-            markdown += '### ' + (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'h4':
-            markdown += '#### ' + (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'h5':
-            markdown += '##### ' + (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'h6':
-            markdown += '###### ' + (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'p':
-            markdown += (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'br':
-            markdown += '\n';
-            break;
-          case 'strong':
-          case 'b':
-            markdown += '**' + (el.textContent?.trim() || '') + '**';
-            break;
-          case 'em':
-          case 'i':
-            markdown += '*' + (el.textContent?.trim() || '') + '*';
-            break;
-          case 'a': {
-            const href = el.getAttribute('href') || '#';
-            markdown += '[' + (el.textContent?.trim() || '') + '](' + href + ')';
-            break;
-          }
-          case 'img':
-            if (this.options.includeImages) {
-              const src = el.getAttribute('src') || '';
-              const alt = el.getAttribute('alt') || '';
-              markdown += '![' + alt + '](' + src + ')';
-            }
-            break;
-          case 'ul':
-            if (this.options.includeLists) {
-              markdown += this.processList(el as HTMLUListElement, false) + '\n';
-            }
-            break;
-          case 'ol':
-            if (this.options.includeLists) {
-              markdown += this.processList(el as HTMLOListElement, true) + '\n';
-            }
-            break;
-          case 'li':
-            // 在processList中处理
-            break;
-          case 'blockquote':
-            markdown += '> ' + (el.textContent?.trim() || '') + '\n\n';
-            break;
-          case 'code':
-            if (this.options.includeCodeBlocks) {
-              markdown += '`' + (el.textContent?.trim() || '') + '`';
-            }
-            break;
-          case 'pre':
-            if (this.options.includeCodeBlocks) {
-              markdown += '```\n' + (el.textContent?.trim() || '') + '\n```\n\n';
-            }
-            break;
-          case 'table':
-            if (this.options.includeTables) {
-              markdown += this.processTable(el as HTMLTableElement) + '\n';
-            }
-            break;
-          case 'div':
-          case 'span':
-          case 'section':
-          case 'article':
-          default:
-            markdown += this.htmlToMarkdown(el);
-            break;
-        }
-      }
-    }
-
-    return markdown;
-  }
-
-  private processList(listElement: HTMLUListElement | HTMLOListElement, isOrdered: boolean): string {
-    let markdown = '';
-    const items = Array.from(listElement.querySelectorAll(':scope > li')); // 只选择直接子元素
-
-    items.forEach((item, index) => {
-      const prefix = isOrdered ? `${index + 1}. ` : '- ';
-      markdown += prefix + (item.textContent?.trim() || '') + '\n';
-    });
-
-    return markdown;
-  }
-
-  private processTable(table: HTMLTableElement): string {
-    const rows = table.querySelectorAll('tr');
-    let markdown = '';
-
-    rows.forEach((row, rowIndex) => {
-      const cells = row.querySelectorAll('td, th');
-      const rowData = Array.from(cells)
-        .map(cell => cell.textContent?.trim() || '')
-        .join(' | ');
-      markdown += '| ' + rowData + ' |\n';
-
-      // 添加表头分隔线
-      if (rowIndex === 0) {
-        const separator = Array.from(cells)
-          .map(() => '---')
-          .join(' | ');
-        markdown += '| ' + separator + ' |\n';
-      }
-    });
-
-    return markdown;
-  }
-
-  getCleanHTML(element: Element): string {
-    const clone = element.cloneNode(true) as Element;
-
-    // 移除script和style标签
-    clone.querySelectorAll('script, style').forEach(el => el.remove());
-
-    // 移除事件处理器属性
-    this.removeEventAttributes(clone);
-
-    return clone.outerHTML;
   }
 
   private removeEventAttributes(element: Element): void {

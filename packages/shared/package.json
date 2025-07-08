@@ -23,7 +23,9 @@
     "postinstall": "pnpm ready"
   },
   "dependencies": {
-    "react-error-boundary": "^6.0.0"
+    "react-error-boundary": "^6.0.0",
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2"
   },
   "devDependencies": {
     "@extension/storage": "workspace:*",

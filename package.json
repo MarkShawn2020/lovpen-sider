@@ -40,7 +40,8 @@
   },
   "dependencies": {
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "turndown-plugin-gfm": "^1.0.2"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.9",
@@ -51,6 +52,7 @@
     "@types/node": "^22.15.21",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
+    "@types/turndown": "^5.0.5",
     "@typescript-eslint/parser": "^8.32.1",
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",

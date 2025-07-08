@@ -12,6 +12,7 @@ class SuperSiderElementSelector extends ElementSelector {
         html: data.html,
         markdown: data.markdown,
         slug: data.slug,
+        domPath: data.domPath,
       });
     }
 
@@ -30,6 +31,7 @@ class SuperSiderElementSelector extends ElementSelector {
         html: data.html,
         markdown: data.markdown,
         slug: data.slug,
+        domPath: data.domPath,
       });
     }
   }
@@ -60,9 +62,12 @@ chrome.runtime.onMessage.addListener(
     } else if (msg.action === 'stopSelection') {
       selector.stopSelection();
       sendResponse({ success: true });
+    } else if (msg.action === 'smartSelect') {
+      selector.smartSelect();
+      sendResponse({ success: true });
     }
   },
 );
 
 // 导出选择器实例供调试使用
-(window as unknown as { superSiderSelector: SuperSiderElementSelector }).superSiderSelector = selector;
+(window as any).superSiderSelector = selector;
