@@ -238,13 +238,6 @@ export class ElementSelector {
     el.style.backgroundColor = `rgba(59, 130, 246, ${this.options.highlightOpacity})`;
   }
 
-  private highlightSelectedElement(): void {
-    this.removeHighlight();
-    if (this.selectedElement) {
-      this.highlightElement(this.selectedElement);
-    }
-  }
-
   private removeHighlight(): void {
     this.originalStyles.forEach((styles, element) => {
       const el = element as HTMLElement;
@@ -389,8 +382,13 @@ export class ElementSelector {
     const mainContent = this.findMainContentElement();
     if (mainContent) {
       this.selectedElement = mainContent;
-      this.highlightSelectedElement();
-      this.onElementSelected(mainContent);
+
+      if (this.options.enableNavigation) {
+        this.enterNavigationMode();
+      } else {
+        this.highlightSelectedElement();
+        this.onElementSelected(mainContent);
+      }
     }
   }
 
@@ -465,7 +463,65 @@ export class ElementSelector {
     // 按分数排序
     scored.sort((a, b) => b.score - a.score);
 
-    return scored[0].element;
+    const bestCandidate = scored[0].element;
+
+    // 尝试在最佳候选元素内部找到更精确的内容区域
+    const refinedCandidate = this.refineCandidateSelection(bestCandidate);
+
+    return refinedCandidate || bestCandidate;
+  }
+
+  private refineCandidateSelection(element: Element): Element | null {
+    // 在候选元素内部寻找更精确的内容区域
+    const contentSelectors = [
+      'article',
+      'main',
+      '[role="main"]',
+      '.content',
+      '.post-content',
+      '.article-content',
+      '.entry-content',
+      '.text',
+      '.body',
+      '.story',
+      '.description',
+    ];
+
+    // 首先尝试语义化标签和常见内容类名
+    for (const selector of contentSelectors) {
+      const child = element.querySelector(selector);
+      if (child && this.isValidContentElement(child)) {
+        // 递归细化，但限制深度避免过度细化
+        const furtherRefined = this.refineCandidateSelection(child);
+        return furtherRefined || child;
+      }
+    }
+
+    // 如果没有找到明确的内容元素，查找文本密度最高的子元素
+    const children = Array.from(element.children);
+    if (children.length === 0) return null;
+
+    const scoredChildren = children
+      .filter(child => this.isValidContentElement(child))
+      .map(child => ({
+        element: child,
+        score: this.calculateContentScore(child),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    if (scoredChildren.length === 0) return null;
+
+    const bestChild = scoredChildren[0];
+
+    // 只有当子元素的得分显著高于父元素时才选择子元素
+    const parentScore = this.calculateContentScore(element);
+    if (bestChild.score > parentScore * 1.2) {
+      // 递归细化，但限制深度
+      const furtherRefined = this.refineCandidateSelection(bestChild.element);
+      return furtherRefined || bestChild.element;
+    }
+
+    return null;
   }
 
   private calculateContentScore(element: Element): number {
@@ -661,5 +717,23 @@ export class ElementSelector {
 
   isInNavigationMode(): boolean {
     return this.isNavigatingMode;
+  }
+
+  // 设置选中的元素（用于外部调用）
+  setSelectedElement(element: Element): void {
+    this.selectedElement = element;
+  }
+
+  // 高亮选中的元素（用于外部调用）
+  public highlightSelectedElement(): void {
+    this.removeHighlight();
+    if (this.selectedElement) {
+      this.highlightElement(this.selectedElement);
+    }
+  }
+
+  // 触发元素选中事件（用于外部调用）
+  public triggerElementSelected(element: Element): void {
+    this.onElementSelected(element);
   }
 }

@@ -50,12 +50,14 @@ export default config(
       },
     },
     rules: {
+      'func-style': 'warn',
+      'import-x/exports-last': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
       'prefer-const': 'error',
       'no-var': 'error',
-      'func-style': ['error', 'expression', { allowArrowFunctions: true }],
       'no-restricted-imports': [
         'error',
         {
@@ -89,7 +91,6 @@ export default config(
       'import-x/no-deprecated': 'error',
       'import-x/no-duplicates': ['error', { considerQueryString: true, 'prefer-inline': false }],
       'import-x/consistent-type-specifier-style': 'error',
-      'import-x/exports-last': 'error',
       'import-x/first': 'error',
     },
     linterOptions: {

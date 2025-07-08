@@ -1,6 +1,6 @@
 import '@src/SidePanel.css';
 import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
-import { exampleThemeStorage } from '@extension/storage';
+import { exampleThemeStorage, domPathStorage } from '@extension/storage';
 import { cn, ErrorDisplay, LoadingSpinner } from '@extension/ui';
 import { useState, useEffect } from 'react';
 
@@ -9,6 +9,89 @@ const SimpleCaptureModule = () => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [markdownOutput, setMarkdownOutput] = useState('');
   const [domPath, setDomPath] = useState('');
+  const [isEditingPath, setIsEditingPath] = useState(false);
+  const [editPathValue, setEditPathValue] = useState('');
+  const [pathError, setPathError] = useState('');
+  const [currentUrl, setCurrentUrl] = useState('');
+
+  // 初始化和URL监听
+  useEffect(() => {
+    const initializeWithCurrentTab = async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab.url) {
+          setCurrentUrl(tab.url);
+          // 尝试加载已保存的DOM路径
+          const savedPath = await domPathStorage.loadPath(tab.url);
+          if (savedPath) {
+            setDomPath(savedPath);
+            // 如果有保存的路径，自动应用
+            await applyDomPath(savedPath);
+          }
+        }
+      } catch (error) {
+        console.error('初始化失败:', error);
+      }
+    };
+
+    initializeWithCurrentTab();
+
+    // 监听标签页变化
+    const tabUpdateListener = async (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+      if (changeInfo.url && tab.active) {
+        setCurrentUrl(changeInfo.url);
+        // 当URL变化时，加载新的DOM路径
+        try {
+          const savedPath = await domPathStorage.loadPath(changeInfo.url);
+          if (savedPath) {
+            setDomPath(savedPath);
+            // 等待页面加载完成后再应用DOM路径
+            setTimeout(async () => {
+              await applyDomPath(savedPath);
+            }, 1000); // 给页面一些时间加载
+          } else {
+            setDomPath('');
+            setMarkdownOutput('');
+          }
+        } catch (error) {
+          console.error('处理URL变化失败:', error);
+          setDomPath('');
+          setMarkdownOutput('');
+        }
+      }
+    };
+
+    // 监听标签页激活
+    const tabActivatedListener = async (activeInfo: chrome.tabs.TabActiveInfo) => {
+      try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        if (tab.url) {
+          setCurrentUrl(tab.url);
+          const savedPath = await domPathStorage.loadPath(tab.url);
+          if (savedPath) {
+            setDomPath(savedPath);
+            // 延迟应用，确保content script已加载
+            setTimeout(async () => {
+              await applyDomPath(savedPath);
+            }, 500);
+          } else {
+            setDomPath('');
+            setMarkdownOutput('');
+          }
+        }
+      } catch (error) {
+        console.error('处理标签页切换失败:', error);
+      }
+    };
+
+    chrome.tabs.onUpdated.addListener(tabUpdateListener);
+    chrome.tabs.onActivated.addListener(tabActivatedListener);
+
+    return () => {
+      chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+      chrome.tabs.onActivated.removeListener(tabActivatedListener);
+    };
+  }, []);
 
   useEffect(() => {
     // 监听来自内容脚本的消息
@@ -17,17 +100,34 @@ const SimpleCaptureModule = () => {
 
       const msg = request as { action?: string; markdown?: string; domPath?: string };
       if (msg.action === 'elementSelected') {
-        setMarkdownOutput(msg.markdown || '');
-        setDomPath(msg.domPath || '');
+        const newPath = msg.domPath || '';
+        const newMarkdown = msg.markdown || '';
+
+        setMarkdownOutput(newMarkdown);
+        setDomPath(newPath);
         setIsSelecting(false);
+
+        // 保存DOM路径
+        if (newPath && currentUrl) {
+          domPathStorage.savePath(currentUrl, newPath);
+        }
+
         sendResponse({ success: true });
       } else if (msg.action === 'elementDataUpdate') {
-        setMarkdownOutput(msg.markdown || '');
-        setDomPath(msg.domPath || '');
+        const newPath = msg.domPath || '';
+        const newMarkdown = msg.markdown || '';
+
+        setMarkdownOutput(newMarkdown);
+        setDomPath(newPath);
+
+        // 保存DOM路径
+        if (newPath && currentUrl) {
+          domPathStorage.savePath(currentUrl, newPath);
+        }
+
         sendResponse({ success: true });
       } else if (msg.action === 'selectionStopped') {
         setIsSelecting(false);
-        setDomPath('');
         sendResponse({ success: true });
       } else if (msg.action === 'navigationExited') {
         setIsSelecting(false);
@@ -40,7 +140,7 @@ const SimpleCaptureModule = () => {
     return () => {
       chrome.runtime.onMessage.removeListener(messageListener);
     };
-  }, [setMarkdownOutput, setIsSelecting]);
+  }, [currentUrl]);
 
   const startSelection = async () => {
     try {
@@ -99,6 +199,88 @@ const SimpleCaptureModule = () => {
     }
   };
 
+  // 应用DOM路径到页面
+  const applyDomPath = async (path: string, retryCount = 0) => {
+    if (!path) return;
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab.id) {
+        console.error('无法获取标签页ID');
+        return;
+      }
+
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'applyDomPath', domPath: path });
+
+      if (!response || !response.success) {
+        console.error('应用DOM路径失败:', response?.error || '未知错误');
+        // 如果应用失败，清空markdown
+        setMarkdownOutput('');
+      }
+    } catch (error) {
+      console.error('应用DOM路径失败:', error);
+      // 网络错误或content script未准备好时，最多重试2次
+      if (retryCount < 2) {
+        setTimeout(() => {
+          applyDomPath(path, retryCount + 1);
+        }, 2000);
+      } else {
+        console.error('重试次数已达上限，停止尝试应用DOM路径');
+        setMarkdownOutput('');
+      }
+    }
+  };
+
+  // 验证DOM路径格式
+  const validateDomPath = (path: string): string => {
+    if (!path.trim()) {
+      return '路径不能为空';
+    }
+
+    // 简单验证CSS选择器格式
+    try {
+      document.querySelector(path);
+      return '';
+    } catch (error) {
+      return '无效的CSS选择器格式';
+    }
+  };
+
+  // 开始编辑DOM路径
+  const startEditPath = () => {
+    setEditPathValue(domPath);
+    setIsEditingPath(true);
+    setPathError('');
+  };
+
+  // 保存编辑的DOM路径
+  const saveEditPath = async () => {
+    const error = validateDomPath(editPathValue);
+    if (error) {
+      setPathError(error);
+      return;
+    }
+
+    setDomPath(editPathValue);
+    setIsEditingPath(false);
+    setPathError('');
+
+    // 保存到存储
+    if (currentUrl) {
+      await domPathStorage.savePath(currentUrl, editPathValue);
+    }
+
+    // 应用新路径
+    await applyDomPath(editPathValue);
+  };
+
+  // 取消编辑
+  const cancelEditPath = () => {
+    setIsEditingPath(false);
+    setEditPathValue('');
+    setPathError('');
+  };
+
   return (
     <div className="flex h-full flex-col p-4">
       <h2 className="mb-4 text-lg font-semibold">页面捕获</h2>
@@ -127,15 +309,53 @@ const SimpleCaptureModule = () => {
         <div className="mb-4 rounded border border-gray-200 p-3 dark:border-gray-600">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-medium">DOM路径</h3>
-            <button
-              onClick={copyDomPath}
-              className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-              📋 复制
-            </button>
+            <div className="flex space-x-1">
+              <button
+                onClick={() => applyDomPath(domPath)}
+                className="rounded bg-green-100 px-2 py-1 text-xs text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
+                🎯 选中
+              </button>
+              <button
+                onClick={copyDomPath}
+                className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                📋 复制
+              </button>
+              <button
+                onClick={startEditPath}
+                className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
+                ✏️ 编辑
+              </button>
+            </div>
           </div>
-          <code className="block rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            {domPath}
-          </code>
+
+          {!isEditingPath ? (
+            <code className="block rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              {domPath}
+            </code>
+          ) : (
+            <div className="space-y-2">
+              <textarea
+                value={editPathValue}
+                onChange={e => setEditPathValue(e.target.value)}
+                className="w-full rounded border border-gray-300 p-2 font-mono text-xs dark:border-gray-600 dark:bg-gray-800"
+                rows={3}
+                placeholder="输入CSS选择器路径..."
+              />
+              {pathError && <p className="text-xs text-red-600 dark:text-red-400">{pathError}</p>}
+              <div className="flex space-x-2">
+                <button
+                  onClick={saveEditPath}
+                  className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700">
+                  ✓ 保存
+                </button>
+                <button
+                  onClick={cancelEditPath}
+                  className="rounded bg-gray-500 px-3 py-1 text-xs text-white hover:bg-gray-600">
+                  ✗ 取消
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
