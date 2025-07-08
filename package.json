@@ -35,7 +35,8 @@
     "copy-env": "bash bash-scripts/copy_env.sh",
     "set-global-env": "bash bash-scripts/set_global_env.sh",
     "module-manager": "pnpm -F module-manager start",
-    "postinstall": "pnpm copy-env"
+    "postinstall": "pnpm copy-env",
+    "postversion": "bash bash-scripts/update_version.sh $npm_package_version"
   },
   "dependencies": {
     "react": "^19.1.0",
