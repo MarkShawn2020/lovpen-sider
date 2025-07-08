@@ -1,5 +1,68 @@
-import { sampleFunction } from '@src/sample-function';
+import { ElementSelector } from '@extension/shared';
 
-console.log('[CEB] All content script loaded');
+console.log('[SuperSider] Content script loaded');
 
-void sampleFunction();
+class SuperSiderElementSelector extends ElementSelector {
+  protected onElementSelected(): void {
+    const data = this.getSelectedElementData();
+    if (data) {
+      // 发送数据到侧边栏
+      chrome.runtime.sendMessage({
+        action: 'elementSelected',
+        html: data.html,
+        markdown: data.markdown,
+        slug: data.slug,
+      });
+    }
+
+    // 通知侧边栏导航模式已退出
+    chrome.runtime.sendMessage({
+      action: 'navigationExited',
+    });
+  }
+
+  protected onElementDataUpdate(): void {
+    const data = this.getSelectedElementData();
+    if (data) {
+      // 实时更新侧边栏中的数据
+      chrome.runtime.sendMessage({
+        action: 'elementDataUpdate',
+        html: data.html,
+        markdown: data.markdown,
+        slug: data.slug,
+      });
+    }
+  }
+
+  protected onSelectionCancelled(): void {
+    // 通知侧边栏选择已停止
+    chrome.runtime.sendMessage({
+      action: 'selectionStopped',
+    });
+  }
+}
+
+// 创建选择器实例
+const selector = new SuperSiderElementSelector({
+  enableNavigation: true,
+  showStatusMessages: true,
+});
+
+// 监听来自侧边栏的消息
+chrome.runtime.onMessage.addListener(
+  (request: unknown, _sender: unknown, sendResponse: (response?: unknown) => void) => {
+    if (!request || typeof request !== 'object') return;
+
+    const msg = request as { action?: string };
+    if (msg.action === 'startSelection') {
+      selector.startSelection();
+      sendResponse({ success: true });
+    } else if (msg.action === 'stopSelection') {
+      selector.stopSelection();
+      sendResponse({ success: true });
+    }
+  },
+);
+
+// 导出选择器实例供调试使用
+(window as unknown as { superSiderSelector: SuperSiderElementSelector }).superSiderSelector = selector;

@@ -1,11 +1,11 @@
 {
   "extensionDescription": {
     "description": "Extension description",
-    "message": "Chrome extension boilerplate developed with Vite, React and Typescript"
+    "message": "多功能侧边栏工具集：网页捕获、文本处理、开发工具、效率助手"
   },
   "extensionName": {
     "description": "Extension name",
-    "message": "Chrome extension boilerplate"
+    "message": "Super-Sider"
   },
   "toggleTheme": {
     "message": "Toggle theme"

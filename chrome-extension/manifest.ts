@@ -24,14 +24,14 @@ const manifest = {
   name: '__MSG_extensionName__',
   browser_specific_settings: {
     gecko: {
-      id: 'example@example.com',
+      id: 'super-sider@example.com',
       strict_min_version: '109.0',
     },
   },
   version: packageJson.version,
   description: '__MSG_extensionDescription__',
-  host_permissions: ['<all_urls>'],
-  permissions: ['storage', 'scripting', 'tabs', 'notifications', 'sidePanel'],
+  host_permissions: ['http://*/*', 'https://*/*', 'https://*.supabase.co/*'],
+  permissions: ['storage', 'scripting', 'tabs', 'sidePanel', 'activeTab', 'identity'],
   options_page: 'options/index.html',
   background: {
     service_worker: 'background.js',
@@ -40,39 +40,24 @@ const manifest = {
   action: {
     default_popup: 'popup/index.html',
     default_icon: 'icon-34.png',
-  },
-  chrome_url_overrides: {
-    newtab: 'new-tab/index.html',
+    default_title: '打开 Super-Sider',
   },
   icons: {
+    '16': 'icon-34.png',
+    '32': 'icon-34.png',
+    '48': 'icon-34.png',
     '128': 'icon-128.png',
   },
   content_scripts: [
     {
-      matches: ['http://*/*', 'https://*/*', '<all_urls>'],
+      matches: ['http://*/*', 'https://*/*'],
       js: ['content/all.iife.js'],
-    },
-    {
-      matches: ['https://example.com/*'],
-      js: ['content/example.iife.js'],
-    },
-    {
-      matches: ['http://*/*', 'https://*/*', '<all_urls>'],
-      js: ['content-ui/all.iife.js'],
-    },
-    {
-      matches: ['https://example.com/*'],
-      js: ['content-ui/example.iife.js'],
-    },
-    {
-      matches: ['http://*/*', 'https://*/*', '<all_urls>'],
       css: ['content.css'],
     },
   ],
-  devtools_page: 'devtools/index.html',
   web_accessible_resources: [
     {
-      resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png'],
+      resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png', 'auth-setup.html'],
       matches: ['*://*/*'],
     },
   ],
