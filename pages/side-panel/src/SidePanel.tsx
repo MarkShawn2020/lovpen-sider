@@ -183,6 +183,57 @@ const SimpleCaptureModule = () => {
     }
   };
 
+  const downloadMarkdown = () => {
+    if (!markdownOutput) return;
+
+    try {
+      // 从 markdown 内容中提取 slug
+      const slug = extractSlugFromMarkdown(markdownOutput);
+      const filename = `${slug}.md`;
+
+      // 创建 Blob 对象
+      const blob = new Blob([markdownOutput], { type: 'text/markdown;charset=utf-8' });
+
+      // 创建下载链接
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+
+      // 触发下载
+      document.body.appendChild(a);
+      a.click();
+
+      // 清理
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下载失败:', error);
+    }
+  };
+
+  const extractSlugFromMarkdown = (markdown: string): string => {
+    try {
+      // 匹配 frontmatter 中的 slug
+      const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+        const frontmatter = frontmatterMatch[1];
+        const slugMatch = frontmatter.match(/^slug:\s*(.+)$/m);
+        if (slugMatch && slugMatch[1]) {
+          return slugMatch[1].trim();
+        }
+      }
+
+      // 如果没有找到 slug，使用时间戳作为默认值
+      const timestamp = new Date().getTime();
+      return `content-${timestamp}`;
+    } catch (error) {
+      console.error('提取 slug 失败:', error);
+      const timestamp = new Date().getTime();
+      return `content-${timestamp}`;
+    }
+  };
+
   const clearContent = () => {
     setMarkdownOutput('');
     setDomPath('');
@@ -365,6 +416,11 @@ const SimpleCaptureModule = () => {
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-medium">Markdown内容</h3>
               <div className="flex space-x-2">
+                <button
+                  onClick={downloadMarkdown}
+                  className="rounded bg-green-100 px-3 py-1 text-sm text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
+                  📥 下载
+                </button>
                 <button
                   onClick={copyToClipboard}
                   className="rounded bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
