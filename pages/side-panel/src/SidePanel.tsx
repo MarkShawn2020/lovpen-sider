@@ -756,6 +756,22 @@ const CopyTitleModule = () => {
   const [copyFeedback, setCopyFeedback] = useState('');
   const [customFormat, setCustomFormat] = useState('{title} - {url}');
   const [showCustomFormat, setShowCustomFormat] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [formatCycleOrder, setFormatCycleOrder] = useState(['markdown', 'title', 'url', 'custom']);
+  const [currentFormatIndex, setCurrentFormatIndex] = useState(0);
+  const [shortcuts, setShortcuts] = useState<{
+    [key: string]: {
+      enabled: boolean;
+      command: string;
+      description: string;
+    };
+  }>({
+    'copy-title-cycle': {
+      enabled: true,
+      command: 'copy-title-cycle',
+      description: 'Copy page title in cycling formats',
+    },
+  });
   const [savedFormats, setSavedFormats] = useState<
     Array<{
       id: string;
@@ -791,8 +807,13 @@ const CopyTitleModule = () => {
     const loadCopyFormatSettings = async () => {
       try {
         const settings = await copyFormatStorage.getSettings();
-        setCustomFormat(settings.customFormat);
-        setSavedFormats(settings.savedFormats);
+        setCustomFormat(settings.customFormat || '{title} - {url}');
+        setSavedFormats(settings.savedFormats || []);
+        setFormatCycleOrder(settings.formatCycleOrder || ['markdown', 'title', 'url', 'custom']);
+        setCurrentFormatIndex(settings.currentFormatIndex || 0);
+        if (settings.shortcuts) {
+          setShortcuts(settings.shortcuts);
+        }
       } catch (error) {
         console.error('加载复制格式设置失败:', error);
       }
@@ -876,6 +897,49 @@ const CopyTitleModule = () => {
     }
   };
 
+  // 切换快捷键启用状态
+  const toggleShortcut = async (command: string, enabled: boolean) => {
+    try {
+      await copyFormatStorage.toggleShortcut(command, enabled);
+      setShortcuts(prev => ({
+        ...prev,
+        [command]: {
+          ...(prev[command] || {}),
+          enabled,
+          command,
+          description: prev[command]?.description || '',
+        },
+      }));
+      setCopyFeedback(`✅ 快捷键已${enabled ? '启用' : '禁用'}`);
+      setTimeout(() => setCopyFeedback(''), 2000);
+    } catch (error) {
+      console.error('切换快捷键失败:', error);
+      setCopyFeedback('❌ 操作失败');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    }
+  };
+
+  // 获取快捷键显示文本
+  const getShortcutText = (command: string) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const shortcutMap: { [key: string]: { mac: string; windows: string } } = {
+      'copy-title-cycle': { mac: '⌘⌥C', windows: 'Ctrl+Shift+L' },
+    };
+    return isMac ? shortcutMap[command]?.mac : shortcutMap[command]?.windows;
+  };
+
+  // 获取格式显示名称
+  const getFormatName = (formatId: string) => {
+    const nameMap: { [key: string]: string } = {
+      markdown: 'Markdown',
+      title: '纯标题',
+      url: '纯网址',
+      custom: '自定义',
+      title_url: '标题, 网址',
+    };
+    return nameMap[formatId] || formatId;
+  };
+
   return (
     <div className="flex h-full flex-col p-4">
       <h2 className="mb-4 text-lg font-semibold">复制标题</h2>
@@ -909,6 +973,17 @@ const CopyTitleModule = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-lg">{format.icon}</span>
                   <span className="text-sm font-medium">{format.name}</span>
+                  {/* 显示快捷键 */}
+                  {format.id !== 'title_url' && (
+                    <span className="rounded bg-gray-100 px-1 py-0.5 text-xs text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                      {getShortcutText(`copy-${format.id}`)}
+                    </span>
+                  )}
+                  {format.id === 'title_url' && (
+                    <span className="rounded bg-orange-100 px-1 py-0.5 text-xs text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
+                      仅UI
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => copyToClipboard(format.id)}
@@ -923,6 +998,82 @@ const CopyTitleModule = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* 快捷键管理 */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">快捷键设置</h3>
+          <button
+            onClick={() => setShowShortcuts(!showShortcuts)}
+            className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600">
+            {showShortcuts ? '隐藏' : '设置'}
+          </button>
+        </div>
+        {showShortcuts && (
+          <div className="mt-2 space-y-3">
+            {/* 快捷键开关 */}
+            {Object.entries(shortcuts || {}).map(([command, config]) => (
+              <div
+                key={command}
+                className="flex items-center justify-between rounded border border-gray-200 p-2 dark:border-gray-600">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm">{config.description}</span>
+                  <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                    {getShortcutText(command)}
+                  </span>
+                </div>
+                <label className="flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={config.enabled}
+                    onChange={e => toggleShortcut(command, e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-xs text-gray-600 dark:text-gray-400">启用</span>
+                </label>
+              </div>
+            ))}
+
+            {/* 格式循环顺序 */}
+            <div className="rounded border border-gray-200 p-3 dark:border-gray-600">
+              <h4 className="mb-2 text-sm font-medium">格式循环顺序</h4>
+              <div className="space-y-2">
+                {formatCycleOrder.map((formatId, index) => (
+                  <div
+                    key={formatId}
+                    className={`flex items-center justify-between rounded p-2 ${
+                      index === currentFormatIndex
+                        ? 'border border-green-200 bg-green-50 dark:border-green-600 dark:bg-green-900/20'
+                        : 'bg-gray-50 dark:bg-gray-800'
+                    }`}>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-sm text-gray-500">#{index + 1}</span>
+                      <span className="text-sm">{getFormatName(formatId)}</span>
+                      {index === currentFormatIndex && (
+                        <span className="rounded bg-green-100 px-1 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          当前
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-2 rounded bg-blue-50 p-2 text-xs text-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+              <div className="mb-1 font-medium">💡 使用说明</div>
+              <div>
+                • 按 ⌘⌥C 在格式间循环复制
+                <br />
+                • 每次按键会切换到下一个格式
+                <br />
+                • 当前格式以绿色高亮显示
+                <br />• 使用 Option+C 避免与开发者工具冲突
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 自定义格式设置 */}

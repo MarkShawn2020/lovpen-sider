@@ -12,6 +12,15 @@ export interface CopyFormatSettings {
     template: string;
     icon: string;
   }>;
+  shortcuts: {
+    [key: string]: {
+      enabled: boolean;
+      command: string;
+      description: string;
+    };
+  };
+  formatCycleOrder: string[];
+  currentFormatIndex: number;
 }
 
 export interface CopyFormatStateType {
@@ -26,6 +35,15 @@ const storage = createStorage<CopyFormatStateType>(
       defaultFormat: 'title',
       formatHistory: [],
       savedFormats: [],
+      shortcuts: {
+        'copy-title-cycle': {
+          enabled: true,
+          command: 'copy-title-cycle',
+          description: 'Copy page title in cycling formats',
+        },
+      },
+      formatCycleOrder: ['markdown', 'title', 'url', 'custom'],
+      currentFormatIndex: 0,
     },
   },
   {
@@ -43,6 +61,11 @@ export type CopyFormatStorageType = BaseStorageType<CopyFormatStateType> & {
   addSavedFormat: (format: { id: string; name: string; template: string; icon: string }) => Promise<void>;
   removeSavedFormat: (id: string) => Promise<void>;
   clearFormatHistory: () => Promise<void>;
+  toggleShortcut: (command: string, enabled: boolean) => Promise<void>;
+  getShortcuts: () => Promise<CopyFormatSettings['shortcuts']>;
+  getNextFormat: () => Promise<string>;
+  updateFormatIndex: (index: number) => Promise<void>;
+  setFormatCycleOrder: (order: string[]) => Promise<void>;
 };
 
 export const copyFormatStorage: CopyFormatStorageType = {
@@ -139,6 +162,70 @@ export const copyFormatStorage: CopyFormatStorageType = {
       settings: {
         ...currentState.settings,
         formatHistory: [],
+      },
+    }));
+  },
+
+  // 切换快捷键启用状态
+  toggleShortcut: async (command: string, enabled: boolean) => {
+    await storage.set(currentState => ({
+      ...currentState,
+      settings: {
+        ...currentState.settings,
+        shortcuts: {
+          ...currentState.settings.shortcuts,
+          [command]: {
+            ...currentState.settings.shortcuts[command],
+            enabled,
+          },
+        },
+      },
+    }));
+  },
+
+  // 获取快捷键配置
+  getShortcuts: async () => {
+    const state = await storage.get();
+    return state.settings.shortcuts;
+  },
+
+  // 获取下一个格式
+  getNextFormat: async () => {
+    const state = await storage.get();
+    const { formatCycleOrder, currentFormatIndex } = state.settings;
+    const nextIndex = (currentFormatIndex + 1) % formatCycleOrder.length;
+
+    // 更新索引
+    await storage.set(currentState => ({
+      ...currentState,
+      settings: {
+        ...currentState.settings,
+        currentFormatIndex: nextIndex,
+      },
+    }));
+
+    return formatCycleOrder[nextIndex];
+  },
+
+  // 更新格式索引
+  updateFormatIndex: async (index: number) => {
+    await storage.set(currentState => ({
+      ...currentState,
+      settings: {
+        ...currentState.settings,
+        currentFormatIndex: index,
+      },
+    }));
+  },
+
+  // 设置格式循环顺序
+  setFormatCycleOrder: async (order: string[]) => {
+    await storage.set(currentState => ({
+      ...currentState,
+      settings: {
+        ...currentState.settings,
+        formatCycleOrder: order,
+        currentFormatIndex: 0, // 重置到第一个
       },
     }));
   },

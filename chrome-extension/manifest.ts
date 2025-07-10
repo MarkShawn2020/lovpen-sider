@@ -31,7 +31,7 @@ const manifest = {
   version: packageJson.version,
   description: '__MSG_extensionDescription__',
   host_permissions: ['http://*/*', 'https://*/*', 'https://*.supabase.co/*'],
-  permissions: ['storage', 'scripting', 'tabs', 'sidePanel', 'activeTab', 'identity', 'downloads'],
+  permissions: ['storage', 'scripting', 'tabs', 'sidePanel', 'activeTab', 'identity', 'downloads', 'notifications'],
   options_page: 'options/index.html',
   background: {
     service_worker: 'background.js',
@@ -63,6 +63,15 @@ const manifest = {
   ],
   side_panel: {
     default_path: 'side-panel/index.html',
+  },
+  commands: {
+    'copy-title-cycle': {
+      suggested_key: {
+        default: 'Ctrl+Shift+L',
+        mac: 'Command+Shift+L',
+      },
+      description: 'Copy page title in cycling formats',
+    },
   },
 } satisfies ManifestType;
 

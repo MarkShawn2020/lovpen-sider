@@ -55,7 +55,7 @@ chrome.runtime.onMessage.addListener(
   (request: unknown, _sender: unknown, sendResponse: (response?: unknown) => void) => {
     if (!request || typeof request !== 'object') return;
 
-    const msg = request as { action?: string; domPath?: string };
+    const msg = request as { action?: string; domPath?: string; text?: string };
     if (msg.action === 'startSelection') {
       selector.startSelection();
       sendResponse({ success: true });
@@ -78,6 +78,22 @@ chrome.runtime.onMessage.addListener(
         }
       } catch (error) {
         sendResponse({ success: false, error: '无效的DOM路径' });
+      }
+    } else if (msg.action === 'copyToClipboard') {
+      // 处理剪贴板复制请求
+      if (msg.text) {
+        navigator.clipboard
+          .writeText(msg.text)
+          .then(() => {
+            sendResponse({ success: true });
+          })
+          .catch(error => {
+            console.error('[SuperSider] Failed to copy to clipboard:', error);
+            sendResponse({ success: false, error: error.message });
+          });
+        return true; // 保持消息通道开放
+      } else {
+        sendResponse({ success: false, error: '没有提供要复制的文本' });
       }
     }
   },
