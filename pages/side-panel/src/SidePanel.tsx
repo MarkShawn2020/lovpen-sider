@@ -1,6 +1,6 @@
 import '@src/SidePanel.css';
 import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
-import { exampleThemeStorage, domPathStorage, downloadSettingsStorage } from '@extension/storage';
+import { exampleThemeStorage, domPathStorage, downloadSettingsStorage, copyFormatStorage } from '@extension/storage';
 import { cn, ErrorDisplay, LoadingSpinner } from '@extension/ui';
 import { useState, useEffect } from 'react';
 
@@ -749,12 +749,254 @@ const SimpleTextModule = () => {
   );
 };
 
+// 复制标题模块
+const CopyTitleModule = () => {
+  const [currentTitle, setCurrentTitle] = useState('');
+  const [currentUrl, setCurrentUrl] = useState('');
+  const [copyFeedback, setCopyFeedback] = useState('');
+  const [customFormat, setCustomFormat] = useState('{title} - {url}');
+  const [showCustomFormat, setShowCustomFormat] = useState(false);
+  const [savedFormats, setSavedFormats] = useState<
+    Array<{
+      id: string;
+      name: string;
+      template: string;
+      icon: string;
+    }>
+  >([]);
+
+  // 预设格式配置
+  const formats = [
+    { id: 'url', name: '纯网址', icon: '🔗', template: '{url}' },
+    { id: 'title', name: '纯标题', icon: '📝', template: '{title}' },
+    { id: 'title_url', name: '标题, 网址', icon: '📋', template: '{title}, {url}' },
+    { id: 'markdown', name: 'Markdown', icon: '📄', template: '[{title}]({url})' },
+    { id: 'custom', name: '自定义', icon: '⚙️', template: customFormat },
+  ];
+
+  // 初始化和监听当前标签页
+  useEffect(() => {
+    const getCurrentTabInfo = async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab.title && tab.url) {
+          setCurrentTitle(tab.title);
+          setCurrentUrl(tab.url);
+        }
+      } catch (error) {
+        console.error('获取标签页信息失败:', error);
+      }
+    };
+
+    const loadCopyFormatSettings = async () => {
+      try {
+        const settings = await copyFormatStorage.getSettings();
+        setCustomFormat(settings.customFormat);
+        setSavedFormats(settings.savedFormats);
+      } catch (error) {
+        console.error('加载复制格式设置失败:', error);
+      }
+    };
+
+    getCurrentTabInfo();
+    loadCopyFormatSettings();
+
+    // 监听标签页变化
+    const tabUpdateListener = async (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+      if (tab.active && (changeInfo.title || changeInfo.url)) {
+        if (changeInfo.title) setCurrentTitle(changeInfo.title);
+        if (changeInfo.url) setCurrentUrl(changeInfo.url);
+      }
+    };
+
+    const tabActivatedListener = async (activeInfo: chrome.tabs.TabActiveInfo) => {
+      try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        if (tab.title && tab.url) {
+          setCurrentTitle(tab.title);
+          setCurrentUrl(tab.url);
+        }
+      } catch (error) {
+        console.error('获取激活标签页信息失败:', error);
+      }
+    };
+
+    chrome.tabs.onUpdated.addListener(tabUpdateListener);
+    chrome.tabs.onActivated.addListener(tabActivatedListener);
+
+    return () => {
+      chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+      chrome.tabs.onActivated.removeListener(tabActivatedListener);
+    };
+  }, []);
+
+  // 生成格式化文本
+  const generateFormattedText = (template: string) =>
+    template.replace(/{title}/g, currentTitle).replace(/{url}/g, currentUrl);
+
+  // 复制到剪贴板
+  const copyToClipboard = async (formatId: string) => {
+    const format = formats.find(f => f.id === formatId);
+    if (!format) return;
+
+    const template = formatId === 'custom' ? customFormat : format.template;
+    const text = generateFormattedText(template);
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback(`✅ 已复制：${format.name}`);
+
+      // 将格式添加到历史记录
+      await copyFormatStorage.addFormatToHistory(template);
+
+      setTimeout(() => setCopyFeedback(''), 2000);
+    } catch (error) {
+      console.error('复制失败:', error);
+      setCopyFeedback('❌ 复制失败');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    }
+  };
+
+  // 预览格式化文本
+  const previewText = (template: string) => {
+    if (!currentTitle || !currentUrl) return '等待页面加载...';
+    return generateFormattedText(template);
+  };
+
+  // 保存自定义格式
+  const saveCustomFormat = async () => {
+    try {
+      await copyFormatStorage.setCustomFormat(customFormat);
+      setCopyFeedback('✅ 自定义格式已保存');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    } catch (error) {
+      console.error('保存自定义格式失败:', error);
+      setCopyFeedback('❌ 保存失败');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    }
+  };
+
+  return (
+    <div className="flex h-full flex-col p-4">
+      <h2 className="mb-4 text-lg font-semibold">复制标题</h2>
+
+      {/* 当前页面信息 */}
+      <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800">
+        <div className="mb-2">
+          <label className="block text-xs text-gray-600 dark:text-gray-400">当前标题</label>
+          <p className="text-sm font-medium">{currentTitle || '加载中...'}</p>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 dark:text-gray-400">当前网址</label>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{currentUrl || '加载中...'}</p>
+        </div>
+      </div>
+
+      {/* 复制反馈 */}
+      {copyFeedback && (
+        <div className="mb-4 rounded bg-green-50 p-2 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
+          {copyFeedback}
+        </div>
+      )}
+
+      {/* 格式选择 */}
+      <div className="mb-4">
+        <h3 className="mb-2 text-sm font-medium">选择格式</h3>
+        <div className="space-y-2">
+          {formats.map(format => (
+            <div key={format.id} className="rounded border border-gray-200 p-2 dark:border-gray-600">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">{format.icon}</span>
+                  <span className="text-sm font-medium">{format.name}</span>
+                </div>
+                <button
+                  onClick={() => copyToClipboard(format.id)}
+                  disabled={!currentTitle || !currentUrl}
+                  className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 disabled:bg-gray-400">
+                  复制
+                </button>
+              </div>
+              <div className="mt-1 rounded bg-gray-100 p-2 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                {previewText(format.id === 'custom' ? customFormat : format.template)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 自定义格式设置 */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">自定义格式</h3>
+          <button
+            onClick={() => setShowCustomFormat(!showCustomFormat)}
+            className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600">
+            {showCustomFormat ? '隐藏' : '设置'}
+          </button>
+        </div>
+        {showCustomFormat && (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={customFormat}
+              onChange={e => setCustomFormat(e.target.value)}
+              placeholder="输入自定义格式，使用 {title} 和 {url} 作为占位符"
+              className="w-full rounded border border-gray-300 p-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              rows={3}
+            />
+            <div className="flex space-x-2">
+              <button
+                onClick={saveCustomFormat}
+                className="flex-1 rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">
+                💾 保存格式
+              </button>
+              <button
+                onClick={() => copyToClipboard('custom')}
+                disabled={!currentTitle || !currentUrl}
+                className="flex-1 rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 disabled:bg-gray-400">
+                📋 复制
+              </button>
+            </div>
+            <div className="text-xs text-gray-500">
+              <p>
+                <strong>可用占位符:</strong>
+              </p>
+              <p>• {'{title}'} - 页面标题</p>
+              <p>• {'{url}'} - 页面网址</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 快捷操作 */}
+      <div className="border-t border-gray-200 pt-4 dark:border-gray-600">
+        <h3 className="mb-2 text-sm font-medium">快捷操作</h3>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => copyToClipboard('title')}
+            disabled={!currentTitle}
+            className="flex-1 rounded bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700 disabled:bg-gray-400">
+            📝 复制标题
+          </button>
+          <button
+            onClick={() => copyToClipboard('url')}
+            disabled={!currentUrl}
+            className="flex-1 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-gray-400">
+            🔗 复制网址
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SidePanel = () => {
   const { isLight } = useStorage(exampleThemeStorage);
   const [activeTab, setActiveTab] = useState('capture');
 
   const tabs = [
     { id: 'capture', name: '捕获', icon: '🎯' },
+    { id: 'copy', name: '复制', icon: '📋' },
     { id: 'text', name: '文本', icon: '📝' },
     { id: 'dev', name: '开发', icon: '🛠️' },
     { id: 'tools', name: '工具', icon: '⚡' },
@@ -785,8 +1027,9 @@ const SidePanel = () => {
       {/* 内容区域 */}
       <main className="flex-1 overflow-hidden">
         {activeTab === 'capture' && <SimpleCaptureModule />}
+        {activeTab === 'copy' && <CopyTitleModule />}
         {activeTab === 'text' && <SimpleTextModule />}
-        {activeTab !== 'capture' && activeTab !== 'text' && (
+        {activeTab !== 'capture' && activeTab !== 'copy' && activeTab !== 'text' && (
           <div className="p-4 text-center">
             <div className="mb-4 text-4xl">🚧</div>
             <h3 className="mb-2 text-lg font-medium">{tabs.find(t => t.id === activeTab)?.name}</h3>
