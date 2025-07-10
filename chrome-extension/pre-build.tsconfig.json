@@ -4,6 +4,6 @@
     "outDir": "./",
     "noEmit": false
   },
-  "include": ["manifest.ts"],
+  "include": ["manifest.ts", "../types"],
   "exclude": [""]
 }
