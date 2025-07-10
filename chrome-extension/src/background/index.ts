@@ -55,10 +55,17 @@ chrome.commands.onCommand.addListener(async command => {
   try {
     // 检查快捷键是否启用
     const shortcuts = await copyFormatStorage.getShortcuts();
-    if (!shortcuts[command]?.enabled) {
+    console.log('[SuperSider] Available shortcuts:', shortcuts);
+
+    // 如果 shortcuts 为 undefined 或者该命令不存在，则使用默认启用状态
+    const isEnabled = shortcuts && shortcuts[command] ? shortcuts[command].enabled : true;
+
+    if (!isEnabled) {
       console.log('[SuperSider] Shortcut disabled:', command);
       return;
     }
+
+    console.log('[SuperSider] Shortcut enabled, proceeding...');
 
     // 获取当前活动标签页
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -67,16 +74,16 @@ chrome.commands.onCommand.addListener(async command => {
       return;
     }
 
-    if (command === 'copy-title-cycle') {
-      // 获取下一个格式
-      const nextFormat = await copyFormatStorage.getNextFormat();
+    if (command === 'copy-title-selected') {
+      // 获取选中的格式
       const settings = await copyFormatStorage.getSettings();
+      const selectedFormat = settings.selectedFormat;
 
       let template = '';
       let formatName = '';
 
       // 根据格式类型确定模板
-      switch (nextFormat) {
+      switch (selectedFormat) {
         case 'markdown':
           template = '[{title}]({url})';
           formatName = 'Markdown';
@@ -105,54 +112,86 @@ chrome.commands.onCommand.addListener(async command => {
       // 生成格式化文本
       const formattedText = template.replace(/{title}/g, tab.title).replace(/{url}/g, tab.url);
 
-      // 写入剪贴板
-      await copyToClipboard(formattedText);
-
       // 添加到历史记录
       await copyFormatStorage.addFormatToHistory(template);
+
+      // 尝试写入剪贴板
+      let copySuccess = true;
+      let errorMessage = '';
+
+      try {
+        await copyToClipboard(formattedText);
+      } catch (error) {
+        copySuccess = false;
+        errorMessage = error instanceof Error ? error.message : '未知错误';
+      }
 
       // 显示通知
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icon-34.png'),
         title: 'Super Sider',
-        message: `✅ 已复制：${formatName}`,
+        message: copySuccess ? `✅ 已复制：${formatName}` : `⚠️ 已生成（剪贴板访问失败）：${formatName}`,
       });
 
-      console.log('[SuperSider] Successfully copied:', formatName);
+      if (copySuccess) {
+        console.log('[SuperSider] Successfully copied:', formatName);
+      } else {
+        console.warn('[SuperSider] Generated but failed to copy:', formatName, 'Error:', errorMessage);
+        console.log('[SuperSider] Generated text:', formattedText);
+      }
     } else {
       console.error('[SuperSider] Unknown command:', command);
     }
   } catch (error) {
     console.error('[SuperSider] Error handling command:', error);
 
-    // 显示错误通知
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: chrome.runtime.getURL('icon-34.png'),
-      title: 'Super Sider',
-      message: '❌ 复制失败',
-    });
+    // 显示错误通知（仅在非复制相关错误时显示）
+    if (!error.message.includes('clipboard') && !error.message.includes('connection')) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icon-34.png'),
+        title: 'Super Sider',
+        message: '❌ 操作失败',
+      });
+    }
   }
 });
 
 // 复制到剪贴板的辅助函数
 async function copyToClipboard(text: string) {
   try {
-    // 在 background script 中，我们需要使用 offscreen API 或者发送消息给 content script
-    // 这里我们发送消息给当前标签页的 content script
+    // 尝试注入 content script 到当前页面
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    if (tab.id) {
-      await chrome.tabs.sendMessage(tab.id, {
-        action: 'copyToClipboard',
-        text: text,
-      });
+    if (!tab.id) {
+      throw new Error('无法获取当前标签页ID');
     }
+
+    // 注入一个临时脚本来处理剪贴板
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async (textToCopy: string) => {
+        try {
+          await navigator.clipboard.writeText(textToCopy);
+          return { success: true };
+        } catch (error) {
+          return { success: false, error: error.message };
+        }
+      },
+      args: [text],
+    });
+
+    return;
   } catch (error) {
     console.error('[SuperSider] Failed to copy to clipboard:', error);
     throw error;
   }
 }
+
+// 测试快捷键是否注册成功
+chrome.commands.getAll().then(commands => {
+  console.log('[SuperSider] Registered commands:', commands);
+});
 
 console.log('[SuperSider] Background script initialized');

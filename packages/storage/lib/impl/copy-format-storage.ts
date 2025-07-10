@@ -4,7 +4,7 @@ import type { BaseStorageType } from '../base/index.js';
 // 复制格式的数据结构
 export interface CopyFormatSettings {
   customFormat: string;
-  defaultFormat: string;
+  selectedFormat: string; // 当前选中的格式
   formatHistory: string[];
   savedFormats: Array<{
     id: string;
@@ -19,8 +19,6 @@ export interface CopyFormatSettings {
       description: string;
     };
   };
-  formatCycleOrder: string[];
-  currentFormatIndex: number;
 }
 
 export interface CopyFormatStateType {
@@ -32,18 +30,16 @@ const storage = createStorage<CopyFormatStateType>(
   {
     settings: {
       customFormat: '{title} - {url}',
-      defaultFormat: 'title',
+      selectedFormat: 'markdown', // 默认选择 markdown 格式
       formatHistory: [],
       savedFormats: [],
       shortcuts: {
-        'copy-title-cycle': {
+        'copy-title-selected': {
           enabled: true,
-          command: 'copy-title-cycle',
-          description: 'Copy page title in cycling formats',
+          command: 'copy-title-selected',
+          description: 'Copy page title in selected format',
         },
       },
-      formatCycleOrder: ['markdown', 'title', 'url', 'custom'],
-      currentFormatIndex: 0,
     },
   },
   {
@@ -56,16 +52,13 @@ export type CopyFormatStorageType = BaseStorageType<CopyFormatStateType> & {
   getSettings: () => Promise<CopyFormatSettings>;
   updateSettings: (settings: Partial<CopyFormatSettings>) => Promise<void>;
   setCustomFormat: (format: string) => Promise<void>;
-  setDefaultFormat: (format: string) => Promise<void>;
+  setSelectedFormat: (format: string) => Promise<void>;
   addFormatToHistory: (format: string) => Promise<void>;
   addSavedFormat: (format: { id: string; name: string; template: string; icon: string }) => Promise<void>;
   removeSavedFormat: (id: string) => Promise<void>;
   clearFormatHistory: () => Promise<void>;
   toggleShortcut: (command: string, enabled: boolean) => Promise<void>;
   getShortcuts: () => Promise<CopyFormatSettings['shortcuts']>;
-  getNextFormat: () => Promise<string>;
-  updateFormatIndex: (index: number) => Promise<void>;
-  setFormatCycleOrder: (order: string[]) => Promise<void>;
 };
 
 export const copyFormatStorage: CopyFormatStorageType = {
@@ -99,13 +92,13 @@ export const copyFormatStorage: CopyFormatStorageType = {
     }));
   },
 
-  // 设置默认格式
-  setDefaultFormat: async (format: string) => {
+  // 设置选中的格式
+  setSelectedFormat: async (format: string) => {
     await storage.set(currentState => ({
       ...currentState,
       settings: {
         ...currentState.settings,
-        defaultFormat: format,
+        selectedFormat: format,
       },
     }));
   },
@@ -187,46 +180,5 @@ export const copyFormatStorage: CopyFormatStorageType = {
   getShortcuts: async () => {
     const state = await storage.get();
     return state.settings.shortcuts;
-  },
-
-  // 获取下一个格式
-  getNextFormat: async () => {
-    const state = await storage.get();
-    const { formatCycleOrder, currentFormatIndex } = state.settings;
-    const nextIndex = (currentFormatIndex + 1) % formatCycleOrder.length;
-
-    // 更新索引
-    await storage.set(currentState => ({
-      ...currentState,
-      settings: {
-        ...currentState.settings,
-        currentFormatIndex: nextIndex,
-      },
-    }));
-
-    return formatCycleOrder[nextIndex];
-  },
-
-  // 更新格式索引
-  updateFormatIndex: async (index: number) => {
-    await storage.set(currentState => ({
-      ...currentState,
-      settings: {
-        ...currentState.settings,
-        currentFormatIndex: index,
-      },
-    }));
-  },
-
-  // 设置格式循环顺序
-  setFormatCycleOrder: async (order: string[]) => {
-    await storage.set(currentState => ({
-      ...currentState,
-      settings: {
-        ...currentState.settings,
-        formatCycleOrder: order,
-        currentFormatIndex: 0, // 重置到第一个
-      },
-    }));
   },
 };

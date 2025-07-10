@@ -31,7 +31,17 @@ const manifest = {
   version: packageJson.version,
   description: '__MSG_extensionDescription__',
   host_permissions: ['http://*/*', 'https://*/*', 'https://*.supabase.co/*'],
-  permissions: ['storage', 'scripting', 'tabs', 'sidePanel', 'activeTab', 'identity', 'downloads', 'notifications'],
+  permissions: [
+    'storage',
+    'scripting',
+    'tabs',
+    'sidePanel',
+    'activeTab',
+    'identity',
+    'downloads',
+    'notifications',
+    'offscreen',
+  ],
   options_page: 'options/index.html',
   background: {
     service_worker: 'background.js',
@@ -57,7 +67,7 @@ const manifest = {
   ],
   web_accessible_resources: [
     {
-      resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png', 'auth-setup.html'],
+      resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png', 'auth-setup.html', 'offscreen.html'],
       matches: ['*://*/*'],
     },
   ],
@@ -65,12 +75,12 @@ const manifest = {
     default_path: 'side-panel/index.html',
   },
   commands: {
-    'copy-title-cycle': {
+    'copy-title-selected': {
       suggested_key: {
-        default: 'Ctrl+Shift+L',
-        mac: 'Command+Shift+L',
+        default: 'Ctrl+Shift+K',
+        mac: 'Command+Shift+K',
       },
-      description: 'Copy page title in cycling formats',
+      description: 'Copy page title in selected format',
     },
   },
 } satisfies ManifestType;
