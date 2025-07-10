@@ -915,7 +915,7 @@ const CopyTitleModule = () => {
   const getShortcutText = (command: string) => {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     const shortcutMap: { [key: string]: { mac: string; windows: string } } = {
-      'copy-title-selected': { mac: 'Ctrl⇧C', windows: 'Ctrl+Shift+K' },
+      'copy-title-selected': { mac: '⌘⇧K', windows: 'Ctrl+Shift+K' },
     };
     return isMac ? shortcutMap[command]?.mac : shortcutMap[command]?.windows;
   };
@@ -989,7 +989,7 @@ const CopyTitleModule = () => {
           <div>
             • 使用上方下拉菜单选择复制格式
             <br />
-            • 按 Ctrl⇧L 快捷键复制选中格式
+            • 按 ⌘⇧K 快捷键复制选中格式
             <br />• 如需修改快捷键，
             <button
               onClick={() => chrome.tabs.create({ url: 'chrome://extensions/configureCommands' })}
