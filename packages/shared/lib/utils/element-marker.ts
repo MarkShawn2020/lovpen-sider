@@ -153,120 +153,159 @@ export class ElementMarker {
   }
 
   /**
-   * 判断元素类型
+   * 判断元素类型（按优先级互斥检测）
    */
   private getElementType(element: HTMLElement): ElementType | null {
     const tagName = element.tagName.toLowerCase();
     const type = element.getAttribute('type')?.toLowerCase();
     const role = element.getAttribute('role')?.toLowerCase();
 
-    // 输入元素（包括所有可交互的输入类型）
-    if (
-      tagName === 'input' ||
-      tagName === 'textarea' ||
-      tagName === 'select' ||
-      (tagName === 'input' && ['checkbox', 'radio', 'range', 'file', 'color'].includes(type || ''))
-    ) {
+    // 优先级1: 原生表单输入元素（最高优先级）
+    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
       return 'input';
     }
 
-    // 按钮元素
-    if (
-      tagName === 'button' ||
-      (tagName === 'input' && ['button', 'submit', 'reset'].includes(type || '')) ||
-      role === 'button' ||
-      element.hasAttribute('onclick') ||
-      element.classList.contains('btn') ||
-      element.classList.contains('button') ||
-      // 检测其他可交互的角色
-      ['radio', 'checkbox', 'switch', 'tab', 'option', 'menuitem', 'treeitem'].includes(role || '') ||
-      // 检测有tabindex的可交互元素
-      (element.hasAttribute('tabindex') && element.getAttribute('tabindex') !== '-1') ||
-      // 检测有aria-checked属性的元素（通常是自定义选择框）
-      element.hasAttribute('aria-checked') ||
-      // 检测有aria-selected属性的元素
-      element.hasAttribute('aria-selected') ||
-      // 检测常见的选择器类名
-      element.classList.contains('option') ||
-      element.classList.contains('choice') ||
-      element.classList.contains('radio') ||
-      element.classList.contains('checkbox') ||
-      element.classList.contains('clickable') ||
-      element.classList.contains('selectable')
-    ) {
+    // 优先级2: 原生按钮元素
+    if (tagName === 'button' || (tagName === 'input' && ['button', 'submit', 'reset'].includes(type || ''))) {
       return 'button';
     }
 
-    // 链接元素
+    // 优先级3: 链接元素
     if (tagName === 'a' && element.hasAttribute('href')) {
       return 'link';
     }
 
-    // 表单元素
+    // 优先级4: 表单容器元素
     if (tagName === 'form' || tagName === 'fieldset' || tagName === 'legend') {
       return 'form';
     }
 
-    // 导航元素
-    if (
-      tagName === 'nav' ||
-      role === 'navigation' ||
-      element.classList.contains('nav') ||
-      element.classList.contains('navigation') ||
-      element.classList.contains('menu')
-    ) {
+    // 优先级5: 自定义可交互元素（通过role或属性识别）
+    if (this.isCustomInteractiveElement(element)) {
+      return 'button';
+    }
+
+    // 优先级6: 导航元素
+    if (this.isNavigationElement(element, tagName, role)) {
       return 'navigation';
     }
 
-    // 图片元素
-    if (tagName === 'img' || tagName === 'svg' || tagName === 'canvas') {
+    // 优先级7: 媒体元素
+    if (['img', 'svg', 'canvas', 'video', 'audio'].includes(tagName)) {
       return 'image';
     }
 
-    // 媒体元素
-    if (tagName === 'video' || tagName === 'audio') {
-      return 'media';
-    }
-
-    // 文本内容元素
-    if (
-      [
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'p',
-        'span',
-        'label',
-        'li',
-        'td',
-        'th',
-        'blockquote',
-        'pre',
-        'code',
-      ].includes(tagName)
-    ) {
+    // 优先级8: 文本内容元素
+    if (this.isTextElement(element, tagName)) {
       return 'text';
     }
 
-    // 容器元素（有内容的）
-    if (['div', 'section', 'article', 'main', 'aside', 'header', 'footer'].includes(tagName)) {
-      const hasContent = this.hasSignificantContent(element);
-      const hasInteractiveChildren = this.hasInteractiveChildren(element);
-
-      // 如果容器只有文本内容且没有子元素，归类为文本
-      if (hasContent && !hasInteractiveChildren && this.isSimpleTextContainer(element)) {
-        return 'text';
-      }
-
-      if (hasContent || hasInteractiveChildren) {
-        return 'container';
-      }
+    // 优先级9: 容器元素（最低优先级，避免与其他类型重叠）
+    if (this.isContainerElement(element, tagName)) {
+      return 'container';
     }
 
     return null;
+  }
+
+  /**
+   * 检测自定义可交互元素
+   */
+  private isCustomInteractiveElement(element: HTMLElement): boolean {
+    const role = element.getAttribute('role')?.toLowerCase();
+
+    // 通过role属性识别
+    if (['button', 'radio', 'checkbox', 'switch', 'tab', 'option', 'menuitem', 'treeitem'].includes(role || '')) {
+      return true;
+    }
+
+    // 通过事件属性识别
+    if (element.hasAttribute('onclick')) {
+      return true;
+    }
+
+    // 通过可访问性属性识别
+    if (element.hasAttribute('aria-checked') || element.hasAttribute('aria-selected')) {
+      return true;
+    }
+
+    // 通过tabindex识别（但排除-1，因为那通常是为了编程控制）
+    const tabindex = element.getAttribute('tabindex');
+    if (tabindex && tabindex !== '-1' && parseInt(tabindex) >= 0) {
+      return true;
+    }
+
+    // 通过明确的交互类名识别
+    const interactiveClassNames = ['btn', 'button', 'clickable', 'selectable'];
+    if (interactiveClassNames.some(className => element.classList.contains(className))) {
+      return true;
+    }
+
+    // 通过选择相关的类名识别
+    const selectionClassNames = ['option', 'choice'];
+    if (selectionClassNames.some(className => element.classList.contains(className))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * 检测导航元素
+   */
+  private isNavigationElement(element: HTMLElement, tagName: string, role: string | undefined): boolean {
+    if (tagName === 'nav' || role === 'navigation') {
+      return true;
+    }
+
+    const navClassNames = ['nav', 'navigation', 'menu'];
+    return navClassNames.some(className => element.classList.contains(className));
+  }
+
+  /**
+   * 检测文本元素
+   */
+  private isTextElement(element: HTMLElement, tagName: string): boolean {
+    // 标准文本标签
+    const textTags = [
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'p',
+      'span',
+      'label',
+      'li',
+      'td',
+      'th',
+      'blockquote',
+      'pre',
+      'code',
+    ];
+
+    return textTags.includes(tagName);
+  }
+
+  /**
+   * 检测容器元素（更严格的条件避免重复）
+   */
+  private isContainerElement(element: HTMLElement, tagName: string): boolean {
+    if (!['div', 'section', 'article', 'main', 'aside', 'header', 'footer'].includes(tagName)) {
+      return false;
+    }
+
+    const hasContent = this.hasSignificantContent(element);
+    const hasInteractiveChildren = this.hasInteractiveChildren(element);
+
+    // 如果容器只有文本内容且是简单文本容器，不归类为容器
+    if (hasContent && !hasInteractiveChildren && this.isSimpleTextContainer(element)) {
+      return false;
+    }
+
+    // 只有真正有内容或有交互子元素的才算容器
+    return hasContent || hasInteractiveChildren;
   }
 
   /**
@@ -289,7 +328,36 @@ export class ElementMarker {
       return false;
     }
 
+    // 避免标记已被父级覆盖的元素
+    if (this.isElementCoveredByParent(element)) {
+      return false;
+    }
+
     return true;
+  }
+
+  /**
+   * 检查元素是否被父级元素覆盖（避免重复标记）
+   */
+  private isElementCoveredByParent(element: HTMLElement): boolean {
+    let parent = element.parentElement;
+
+    while (parent && parent !== document.body) {
+      // 如果父元素也会被检测为同一类型，则跳过子元素
+      const parentType = this.getElementType(parent);
+      const elementType = this.getElementType(element);
+
+      if (parentType && elementType && parentType === elementType) {
+        // 如果父元素是容器类型，允许子元素被标记
+        if (parentType !== 'container') {
+          return true;
+        }
+      }
+
+      parent = parent.parentElement;
+    }
+
+    return false;
   }
 
   /**
