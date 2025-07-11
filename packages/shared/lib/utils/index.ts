@@ -7,6 +7,8 @@ export * from './markdown-converter.js';
 export * from './element-selector.js';
 export * from './form-detector.js';
 export * from './form-filler.js';
+export * from './element-marker.js';
+export * from '../commands/command-processor.js';
 
 // 导出storage相关功能，但不导出类型以避免冲突
 export { dbManager } from '../storage/database-manager.js';

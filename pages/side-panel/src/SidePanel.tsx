@@ -1,8 +1,9 @@
 import '@src/SidePanel.css';
-import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
+import { useStorage, withErrorBoundary, withSuspense, commandProcessor } from '@extension/shared';
 import { exampleThemeStorage, domPathStorage, downloadSettingsStorage, copyFormatStorage } from '@extension/storage';
 import { cn, ErrorDisplay, LoadingSpinner, Select } from '@extension/ui';
 import { useState, useEffect } from 'react';
+import type { CommandResult } from '@extension/shared';
 
 // 下载设置面板组件
 const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
@@ -1061,6 +1062,339 @@ const CopyTitleModule = () => {
   );
 };
 
+// 开发者工具模块
+const DeveloperModule = () => {
+  const [commandInput, setCommandInput] = useState('');
+  const [commandHistory, setCommandHistory] = useState<{ input: string; result: CommandResult; timestamp: string }[]>(
+    [],
+  );
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  // 执行命令
+  const executeCommand = async () => {
+    if (!commandInput.trim() || isExecuting) return;
+
+    setIsExecuting(true);
+    const timestamp = new Date().toLocaleTimeString();
+
+    try {
+      // 获取当前标签页信息作为命令上下文
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const context = {
+        currentUrl: tab.url,
+        tabId: tab.id,
+        timestamp: new Date().toISOString(),
+      };
+
+      // 如果是需要与页面交互的命令，需要通过消息传递到content script
+      if (
+        commandInput.startsWith('/detectForms') ||
+        commandInput.startsWith('/fillForm') ||
+        commandInput.startsWith('/clearForm') ||
+        commandInput.startsWith('/validateForm') ||
+        commandInput.startsWith('/clearHighlights') ||
+        commandInput.startsWith('/highlightForm') ||
+        commandInput.startsWith('/debugForms') ||
+        commandInput.startsWith('/markAllElements') ||
+        commandInput.startsWith('/markInputs') ||
+        commandInput.startsWith('/markContainers') ||
+        commandInput.startsWith('/clearAllMarks')
+      ) {
+        const parts = commandInput.trim().split(/\s+/);
+        const commandName = parts[0].substring(1);
+        const args = parts.slice(1);
+
+        let result: CommandResult;
+
+        if (commandName === 'detectForms') {
+          const response = await chrome.tabs.sendMessage(tab.id!, { action: 'detectForms' });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '表单检测完成' : '表单检测失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'fillForm') {
+          if (args.length === 0) {
+            result = {
+              success: false,
+              message: '请指定模板名称。用法: /fillForm <模板名称> [表单选择器]',
+            };
+          } else {
+            // 使用默认示例数据
+            const defaultData = {
+              name: '张三',
+              email: 'zhangsan@example.com',
+              phone: '13800138000',
+              address: '北京市朝阳区',
+            };
+
+            const response = await chrome.tabs.sendMessage(tab.id!, {
+              action: 'fillForm',
+              data: {
+                formSelector: args[1] || 'form:first-of-type',
+                data: defaultData,
+                options: {
+                  simulateTyping: true,
+                  typingDelay: 50,
+                  triggerEvents: true,
+                  scrollToField: true,
+                },
+              },
+            });
+            result = {
+              success: response.success,
+              message: response.message || (response.success ? '表单填写完成' : '表单填写失败'),
+              data: response.data,
+            };
+          }
+        } else if (commandName === 'clearForm') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'clearForm',
+            data: { formSelector: args[0] || 'form:first-of-type' },
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '表单清空完成' : '表单清空失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'validateForm') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'validateForm',
+            data: { formSelector: args[0] || 'form:first-of-type' },
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '表单验证完成' : '表单验证失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'clearHighlights') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'clearHighlights',
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '清除标记完成' : '清除标记失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'highlightForm') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'highlightForm',
+            data: { formSelector: args[0] || 'form:first-of-type' },
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '标记表单完成' : '标记表单失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'debugForms') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'debugForms',
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '调试信息已输出到控制台' : '调试失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'markAllElements') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'markAllElements',
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '已标记所有元素' : '标记失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'markInputs') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'markInputs',
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '已标记输入元素' : '标记失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'markContainers') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'markContainers',
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '已标记容器元素' : '标记失败'),
+            data: response.data,
+          };
+        } else if (commandName === 'clearAllMarks') {
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'clearAllMarks',
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '已清除所有标记' : '清除失败'),
+            data: response.data,
+          };
+        } else {
+          result = {
+            success: false,
+            message: `未知命令: /${commandName}`,
+          };
+        }
+
+        // 添加到历史记录
+        setCommandHistory(prev => [
+          { input: commandInput, result, timestamp },
+          ...prev.slice(0, 19), // 保留最近20条记录
+        ]);
+      } else {
+        // 其他命令通过命令处理器执行
+        const result = await commandProcessor.executeCommand(commandInput, context);
+        setCommandHistory(prev => [{ input: commandInput, result, timestamp }, ...prev.slice(0, 19)]);
+      }
+
+      setCommandInput('');
+    } catch (error) {
+      const result: CommandResult = {
+        success: false,
+        message: `命令执行失败: ${error instanceof Error ? error.message : '未知错误'}`,
+      };
+
+      setCommandHistory(prev => [{ input: commandInput, result, timestamp }, ...prev.slice(0, 19)]);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  // 处理键盘事件
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      executeCommand();
+    }
+  };
+
+  // 清空历史记录
+  const clearHistory = () => {
+    setCommandHistory([]);
+  };
+
+  // 快速插入示例命令
+  const insertExampleCommand = (command: string) => {
+    setCommandInput(command);
+  };
+
+  const exampleCommands = [
+    { command: '/help', description: '显示所有可用命令' },
+    { command: '/markAllElements', description: '标记页面所有有意义的元素' },
+    { command: '/markInputs', description: '只标记输入相关元素' },
+    { command: '/markContainers', description: '只标记容器元素' },
+    { command: '/clearAllMarks', description: '清除所有元素标记' },
+    { command: '/detectForms', description: '检测并标记页面表单字段' },
+    { command: '/fillForm 个人信息', description: '使用个人信息模板填写表单' },
+    { command: '/clearHighlights', description: '清除表单字段标记' },
+    { command: '/debugForms', description: '调试表单检测（查看控制台）' },
+  ];
+
+  return (
+    <div className="flex h-full flex-col p-4">
+      <h2 className="mb-4 text-lg font-semibold">开发者工具</h2>
+
+      {/* 命令输入区域 */}
+      <div className="mb-4">
+        <label htmlFor="command-input" className="mb-2 block text-sm font-medium">
+          命令输入
+        </label>
+        <div className="flex space-x-2">
+          <input
+            id="command-input"
+            type="text"
+            value={commandInput}
+            onChange={e => setCommandInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="输入命令，例如: /help 或 /detectForms"
+            className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+            disabled={isExecuting}
+          />
+          <button
+            onClick={executeCommand}
+            disabled={!commandInput.trim() || isExecuting}
+            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-gray-400">
+            {isExecuting ? '执行中...' : '执行'}
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">按 Enter 键快速执行命令</p>
+      </div>
+
+      {/* 示例命令 */}
+      <div className="mb-4">
+        <h3 className="mb-2 text-sm font-medium">示例命令</h3>
+        <div className="grid grid-cols-1 gap-2">
+          {exampleCommands.map((example, index) => (
+            <button
+              key={index}
+              onClick={() => insertExampleCommand(example.command)}
+              className="rounded border border-gray-200 p-2 text-left text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800">
+              <code className="font-mono text-blue-600 dark:text-blue-400">{example.command}</code>
+              <p className="mt-1 text-gray-600 dark:text-gray-400">{example.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 命令历史 */}
+      <div className="flex-1 overflow-auto">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-medium">命令历史</h3>
+          {commandHistory.length > 0 && (
+            <button
+              onClick={clearHistory}
+              className="rounded bg-red-100 px-2 py-1 text-xs text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
+              清空
+            </button>
+          )}
+        </div>
+
+        {commandHistory.length === 0 ? (
+          <div className="py-8 text-center text-gray-500">
+            <div className="mb-2 text-4xl">⌨️</div>
+            <p>输入命令开始使用开发者工具</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {commandHistory.map((entry, index) => (
+              <div key={index} className="rounded border border-gray-200 p-3 dark:border-gray-600">
+                <div className="mb-2 flex items-center justify-between">
+                  <code className="font-mono text-sm text-blue-600 dark:text-blue-400">{entry.input}</code>
+                  <span className="text-xs text-gray-500">{entry.timestamp}</span>
+                </div>
+                <div
+                  className={cn(
+                    'rounded p-2 text-sm',
+                    entry.result.success
+                      ? 'bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                      : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300',
+                  )}>
+                  <div className="flex items-start">
+                    <span className="mr-2 text-lg">{entry.result.success ? '✅' : '❌'}</span>
+                    <div className="flex-1">
+                      <p className="whitespace-pre-wrap">{entry.result.message}</p>
+                      {entry.result.data ? (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs opacity-75">查看详细数据</summary>
+                          <pre className="mt-1 overflow-auto rounded bg-black/10 p-2 text-xs">
+                            {JSON.stringify(entry.result.data, null, 2)}
+                          </pre>
+                        </details>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const SidePanel = () => {
   const { isLight } = useStorage(exampleThemeStorage);
   const [activeTab, setActiveTab] = useState('capture');
@@ -1100,7 +1434,8 @@ const SidePanel = () => {
         {activeTab === 'capture' && <SimpleCaptureModule />}
         {activeTab === 'copy' && <CopyTitleModule />}
         {activeTab === 'text' && <SimpleTextModule />}
-        {activeTab !== 'capture' && activeTab !== 'copy' && activeTab !== 'text' && (
+        {activeTab === 'dev' && <DeveloperModule />}
+        {activeTab !== 'capture' && activeTab !== 'copy' && activeTab !== 'text' && activeTab !== 'dev' && (
           <div className="p-4 text-center">
             <div className="mb-4 text-4xl">🚧</div>
             <h3 className="mb-2 text-lg font-medium">{tabs.find(t => t.id === activeTab)?.name}</h3>

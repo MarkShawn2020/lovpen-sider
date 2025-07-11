@@ -1,4 +1,4 @@
-import { ElementSelector, FormDetector, FormFiller } from '@extension/shared';
+import { ElementSelector, FormDetector, FormFiller, ElementMarker } from '@extension/shared';
 import type { FormFillRequest } from '@extension/shared';
 
 console.log('[SuperSider] Content script loaded');
@@ -55,6 +55,9 @@ const selector = new SuperSiderElementSelector({
 const formDetector = new FormDetector();
 const formFiller = new FormFiller();
 
+// 创建元素标记实例
+const elementMarker = new ElementMarker();
+
 // 监听来自侧边栏的消息
 chrome.runtime.onMessage.addListener(
   (request: unknown, _sender: unknown, sendResponse: (response?: unknown) => void) => {
@@ -104,9 +107,13 @@ chrome.runtime.onMessage.addListener(
       // 检测表单
       try {
         const forms = formDetector.detectForms();
+
+        // 视觉标记检测到的表单字段
+        formDetector.highlightFormFields(forms);
+
         sendResponse({
           success: true,
-          message: `检测到 ${forms.length} 个表单`,
+          message: `检测到 ${forms.length} 个表单，已在页面上标记字段`,
           data: forms.map(form => ({
             formSelector: form.formSelector,
             formType: form.formType,
@@ -189,6 +196,177 @@ chrome.runtime.onMessage.addListener(
         sendResponse({
           success: false,
           error: error instanceof Error ? error.message : '表单验证失败',
+        });
+      }
+    } else if (msg.action === 'clearHighlights') {
+      // 清除表单高亮
+      try {
+        formDetector.clearHighlights();
+        sendResponse({
+          success: true,
+          message: '已清除表单字段标记',
+        });
+      } catch (error) {
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '清除标记失败',
+        });
+      }
+    } else if (msg.action === 'highlightForm') {
+      // 高亮指定表单
+      try {
+        const formSelector = (msg.data as { formSelector?: string })?.formSelector || 'form:first-of-type';
+        formDetector.highlightSpecificForm(formSelector);
+        sendResponse({
+          success: true,
+          message: `已标记表单 ${formSelector} 的字段`,
+        });
+      } catch (error) {
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '标记表单失败',
+        });
+      }
+    } else if (msg.action === 'debugForms') {
+      // 调试表单检测
+      try {
+        console.log('=== 表单调试信息 ===');
+
+        // 检测所有form标签
+        const formTags = Array.from(document.querySelectorAll('form'));
+        console.log(`找到 ${formTags.length} 个 <form> 标签:`);
+        formTags.forEach((form, index) => {
+          const inputs = form.querySelectorAll('input, textarea, select');
+          console.log(`  表单 ${index + 1}: ${inputs.length} 个字段`, form);
+        });
+
+        // 检测所有输入元素
+        const allInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+        console.log(`\n页面总共有 ${allInputs.length} 个输入元素:`);
+        allInputs.forEach((input, index) => {
+          const htmlInput = input as HTMLInputElement;
+          console.log(
+            `  ${index + 1}. ${htmlInput.tagName} [${htmlInput.type || 'text'}] - ${htmlInput.name || htmlInput.id || '无标识'}`,
+          );
+        });
+
+        // 运行完整检测
+        const forms = formDetector.detectForms();
+        console.log(`\n检测结果: ${forms.length} 个表单`);
+        forms.forEach((form, index) => {
+          console.log(
+            `表单 ${index + 1}: ${form.formSelector} (${form.formType}, 置信度: ${Math.round(form.confidence * 100)}%)`,
+          );
+          console.log(`  包含 ${form.fields.length} 个字段:`);
+          form.fields.forEach((field, fieldIndex) => {
+            console.log(`    ${fieldIndex + 1}. ${field.type}: ${field.label || '无标签'} - ${field.selector}`);
+          });
+        });
+
+        sendResponse({
+          success: true,
+          message: '调试信息已输出到浏览器控制台（F12 > Console）',
+          data: {
+            formTags: formTags.length,
+            totalInputs: allInputs.length,
+            detectedForms: forms.length,
+          },
+        });
+      } catch (error) {
+        console.error('调试失败:', error);
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '调试失败',
+        });
+      }
+    } else if (msg.action === 'markAllElements') {
+      // 标记所有元素
+      try {
+        const elements = elementMarker.markAllElements();
+        const stats = elementMarker.getMarkingStats();
+
+        sendResponse({
+          success: true,
+          message: `已标记 ${elements.length} 个元素`,
+          data: {
+            totalElements: elements.length,
+            stats,
+            elements: elements.map(el => ({
+              type: el.type,
+              label: el.label,
+              selector: el.selector,
+            })),
+          },
+        });
+      } catch (error) {
+        console.error('标记所有元素失败:', error);
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '标记失败',
+        });
+      }
+    } else if (msg.action === 'markInputs') {
+      // 标记输入元素
+      try {
+        const elements = elementMarker.markInputElements();
+
+        sendResponse({
+          success: true,
+          message: `已标记 ${elements.length} 个输入元素`,
+          data: {
+            totalElements: elements.length,
+            elements: elements.map(el => ({
+              type: el.type,
+              label: el.label,
+              selector: el.selector,
+            })),
+          },
+        });
+      } catch (error) {
+        console.error('标记输入元素失败:', error);
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '标记失败',
+        });
+      }
+    } else if (msg.action === 'markContainers') {
+      // 标记容器元素
+      try {
+        const elements = elementMarker.markContainerElements();
+
+        sendResponse({
+          success: true,
+          message: `已标记 ${elements.length} 个容器元素`,
+          data: {
+            totalElements: elements.length,
+            elements: elements.map(el => ({
+              type: el.type,
+              label: el.label,
+              selector: el.selector,
+            })),
+          },
+        });
+      } catch (error) {
+        console.error('标记容器元素失败:', error);
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '标记失败',
+        });
+      }
+    } else if (msg.action === 'clearAllMarks') {
+      // 清除所有标记
+      try {
+        elementMarker.clearMarkers();
+
+        sendResponse({
+          success: true,
+          message: '已清除所有元素标记',
+        });
+      } catch (error) {
+        console.error('清除标记失败:', error);
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '清除失败',
         });
       }
     }

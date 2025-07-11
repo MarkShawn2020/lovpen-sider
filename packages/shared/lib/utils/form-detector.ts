@@ -7,6 +7,7 @@ import type {
 
 export class FormDetector {
   private fieldTypeRules: FieldTypeInferenceRule[] = [];
+  private highlightedElements: Element[] = [];
 
   constructor() {
     this.initializeFieldTypeRules();
@@ -513,34 +514,60 @@ export class FormDetector {
   private detectImplicitForms(): FormDetectionResult[] {
     const results: FormDetectionResult[] = [];
 
-    // 查找包含多个输入元素的容器
-    const containers = Array.from(document.querySelectorAll('div, section, article'));
+    // 更广泛的容器选择，但仍然有一定筛选
+    const containers = Array.from(document.querySelectorAll('div, section, article, main, .container'));
 
     containers.forEach((container, index) => {
+      // 跳过已经在form标签内的容器
+      if (container.closest('form')) {
+        return;
+      }
+
       const formElements = this.getFormElements(container);
 
+      // 降低最小字段数要求
       if (formElements.length >= 2) {
         const fields = formElements
           .map((element, fieldIndex) => this.analyzeFormElement(element, fieldIndex))
           .filter(Boolean) as FormFieldDefinition[];
 
+        // 更宽松的条件：至少2个字段，或者有提交按钮
+        const fieldTypes = new Set(fields.map(f => f.type));
+        const hasSubmitButton = container.querySelector(
+          'button[type="submit"], input[type="submit"], button:not([type])',
+        );
+
         if (fields.length >= 2) {
           const formSelector = this.generateContainerSelector(container, index);
           const formType = this.inferFormType(container, fields);
-          const confidence = this.calculateConfidence(container, fields) * 0.8; // 降低隐式表单的置信度
+          let confidence = this.calculateConfidence(container, fields) * 0.7; // 降低隐式表单的置信度
+
+          // 如果有提交按钮，提高置信度
+          if (hasSubmitButton) {
+            confidence *= 1.2;
+          }
+
+          // 如果字段类型多样，提高置信度
+          if (fieldTypes.size >= 3) {
+            confidence *= 1.1;
+          }
 
           results.push({
             form: container,
             formSelector,
             fields,
-            confidence,
+            confidence: Math.min(confidence, 1.0),
             formType,
           });
         }
       }
     });
 
-    return results.filter(result => result.confidence > 0.3);
+    // 只返回一定置信度的结果，并限制数量
+    return results
+      .filter(result => result.confidence > 0.3)
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 10); // 最多返回10个隐式表单
   }
 
   /**
@@ -665,5 +692,225 @@ export class FormDetector {
         weight: 7,
       },
     ];
+  }
+
+  /**
+   * 高亮显示表单字段
+   */
+  highlightFormFields(forms: FormDetectionResult[]): void {
+    // 清除之前的高亮
+    this.clearHighlights();
+
+    let highlightedCount = 0;
+    forms.forEach((formResult, formIndex) => {
+      console.log(`处理表单 ${formIndex + 1}:`, formResult.formSelector, `包含 ${formResult.fields.length} 个字段`);
+
+      formResult.fields.forEach((field, fieldIndex) => {
+        // 尝试多种选择方式
+        const element = this.findElementByField(field);
+
+        if (element) {
+          console.log(`  字段 ${fieldIndex + 1}: ${field.label || field.type} - 选择器: ${field.selector}`);
+          this.highlightElement(element, field);
+          highlightedCount++;
+        } else {
+          console.warn(`  字段 ${fieldIndex + 1}: 未找到元素 - 选择器: ${field.selector}`);
+        }
+      });
+    });
+
+    console.log(`总共高亮了 ${highlightedCount} 个字段`);
+
+    if (highlightedCount === 0) {
+      console.warn('没有高亮任何字段，可能的原因：');
+      console.warn('1. 选择器无法找到对应元素');
+      console.warn('2. 字段分析失败');
+      console.warn('3. DOM结构与预期不符');
+    }
+  }
+
+  /**
+   * 通过多种方式查找字段元素
+   */
+  private findElementByField(field: FormFieldDefinition): HTMLElement | null {
+    console.log(`    查找字段元素: ${field.type} - ${field.selector}`);
+
+    // 方法1: 直接使用选择器
+    let element = document.querySelector(field.selector) as HTMLElement;
+    if (element) {
+      console.log(`    ✓ 通过选择器找到: ${field.selector}`);
+      return element;
+    }
+    console.log(`    ✗ 选择器未找到: ${field.selector}`);
+
+    // 方法2: 如果有ID，直接通过ID查找
+    if (field.id) {
+      element = document.getElementById(field.id) as HTMLElement;
+      if (element) {
+        console.log(`    ✓ 通过ID找到: ${field.id}`);
+        return element;
+      }
+      console.log(`    ✗ ID未找到: ${field.id}`);
+    }
+
+    // 方法3: 如果有name，通过name查找
+    if ((field as any).name) {
+      const nameSelector = `[name="${(field as any).name}"]`;
+      element = document.querySelector(nameSelector) as HTMLElement;
+      if (element) {
+        console.log(`    ✓ 通过name找到: ${(field as any).name}`);
+        return element;
+      }
+      console.log(`    ✗ name未找到: ${(field as any).name}`);
+    }
+
+    // 方法4: 通过类型和索引查找
+    const typeSelector =
+      field.type === 'textarea'
+        ? 'textarea'
+        : field.type === 'select'
+          ? 'select'
+          : `input[type="${field.type}"], input:not([type])`;
+
+    const elementsOfType = Array.from(document.querySelectorAll(typeSelector));
+    if (elementsOfType.length > 0) {
+      console.log(`    找到 ${elementsOfType.length} 个 ${field.type} 类型的元素`);
+      // 尝试返回第一个可见的元素
+      for (const el of elementsOfType) {
+        const htmlEl = el as HTMLElement;
+        if (htmlEl.offsetParent !== null) {
+          // 检查元素是否可见
+          console.log(`    ✓ 通过类型找到可见元素: ${typeSelector}`);
+          return htmlEl;
+        }
+      }
+    }
+
+    console.log(`    ✗ 所有方法都未找到元素`);
+    return null;
+  }
+
+  /**
+   * 高亮单个元素
+   */
+  private highlightElement(element: HTMLElement, field: FormFieldDefinition): void {
+    // 保存原始样式
+    const originalStyle = element.style.cssText;
+    element.setAttribute('data-original-style', originalStyle);
+
+    // 添加高亮样式
+    const highlightStyles = {
+      outline: '3px solid #3b82f6',
+      outlineOffset: '2px',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      position: 'relative',
+      zIndex: '1000',
+    };
+
+    Object.assign(element.style, highlightStyles);
+
+    // 添加标签
+    this.addFieldLabel(element, field);
+
+    // 记录高亮的元素
+    this.highlightedElements.push(element);
+  }
+
+  /**
+   * 为字段添加标签
+   */
+  private addFieldLabel(element: HTMLElement, field: FormFieldDefinition): void {
+    // 创建标签元素
+    const label = document.createElement('div');
+    label.className = 'form-field-label';
+    label.style.cssText = `
+      position: absolute;
+      top: -25px;
+      left: 0;
+      background: #3b82f6;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 500;
+      white-space: nowrap;
+      z-index: 1001;
+      pointer-events: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    `;
+
+    // 设置标签文本
+    const typeIcon = this.getFieldTypeIcon(field.type);
+    const labelText = field.label || field.type;
+    label.textContent = `${typeIcon} ${labelText}`;
+
+    // 确保父元素有相对定位
+    const parent = element.parentElement;
+    if (parent && getComputedStyle(parent).position === 'static') {
+      parent.style.position = 'relative';
+    }
+
+    // 插入标签
+    element.parentElement?.insertBefore(label, element);
+    this.highlightedElements.push(label);
+  }
+
+  /**
+   * 获取字段类型图标
+   */
+  private getFieldTypeIcon(type: FormFieldType): string {
+    const iconMap: Record<FormFieldType, string> = {
+      text: '📝',
+      email: '📧',
+      password: '🔒',
+      tel: '📞',
+      number: '🔢',
+      date: '📅',
+      url: '🔗',
+      textarea: '📄',
+      select: '📋',
+      checkbox: '☑️',
+      radio: '🔘',
+      file: '📎',
+    };
+    return iconMap[type] || '📝';
+  }
+
+  /**
+   * 清除所有高亮
+   */
+  clearHighlights(): void {
+    this.highlightedElements.forEach(element => {
+      if (element.hasAttribute('data-original-style')) {
+        // 恢复原始样式
+        const originalStyle = element.getAttribute('data-original-style') || '';
+        (element as HTMLElement).style.cssText = originalStyle;
+        element.removeAttribute('data-original-style');
+      } else if (element.className === 'form-field-label') {
+        // 移除标签
+        element.remove();
+      }
+    });
+
+    this.highlightedElements = [];
+  }
+
+  /**
+   * 高亮指定的表单
+   */
+  highlightSpecificForm(formSelector: string): void {
+    this.clearHighlights();
+
+    const form = document.querySelector(formSelector);
+    if (form) {
+      const fields = this.detectFormFields(form);
+      fields.forEach(field => {
+        const element = document.querySelector(field.selector) as HTMLElement;
+        if (element) {
+          this.highlightElement(element, field);
+        }
+      });
+    }
   }
 }
