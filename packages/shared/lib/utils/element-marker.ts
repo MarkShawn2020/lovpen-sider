@@ -160,8 +160,13 @@ export class ElementMarker {
     const type = element.getAttribute('type')?.toLowerCase();
     const role = element.getAttribute('role')?.toLowerCase();
 
-    // 输入元素
-    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+    // 输入元素（包括所有可交互的输入类型）
+    if (
+      tagName === 'input' ||
+      tagName === 'textarea' ||
+      tagName === 'select' ||
+      (tagName === 'input' && ['checkbox', 'radio', 'range', 'file', 'color'].includes(type || ''))
+    ) {
       return 'input';
     }
 
@@ -169,7 +174,25 @@ export class ElementMarker {
     if (
       tagName === 'button' ||
       (tagName === 'input' && ['button', 'submit', 'reset'].includes(type || '')) ||
-      role === 'button'
+      role === 'button' ||
+      element.hasAttribute('onclick') ||
+      element.classList.contains('btn') ||
+      element.classList.contains('button') ||
+      // 检测其他可交互的角色
+      ['radio', 'checkbox', 'switch', 'tab', 'option', 'menuitem', 'treeitem'].includes(role || '') ||
+      // 检测有tabindex的可交互元素
+      (element.hasAttribute('tabindex') && element.getAttribute('tabindex') !== '-1') ||
+      // 检测有aria-checked属性的元素（通常是自定义选择框）
+      element.hasAttribute('aria-checked') ||
+      // 检测有aria-selected属性的元素
+      element.hasAttribute('aria-selected') ||
+      // 检测常见的选择器类名
+      element.classList.contains('option') ||
+      element.classList.contains('choice') ||
+      element.classList.contains('radio') ||
+      element.classList.contains('checkbox') ||
+      element.classList.contains('clickable') ||
+      element.classList.contains('selectable')
     ) {
       return 'button';
     }
@@ -476,7 +499,7 @@ export class ElementMarker {
    * 创建单个标记
    */
   private createMarker(elementInfo: ElementInfo, index: number): void {
-    const { element, type, label } = elementInfo;
+    const { element, type } = elementInfo;
     const bounds = element.getBoundingClientRect();
 
     // 创建覆盖层
@@ -493,35 +516,12 @@ export class ElementMarker {
       ${this.getMarkerStyles(type)}
     `;
 
-    // 创建标签
-    const labelElement = document.createElement('div');
-    labelElement.className = 'element-marker-label';
-    labelElement.style.cssText = `
-      position: fixed;
-      top: ${bounds.top - 25}px;
-      left: ${bounds.left}px;
-      ${this.getLabelStyles(type)}
-      font-size: 11px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      font-weight: 500;
-      white-space: nowrap;
-      z-index: 10001;
-      pointer-events: none;
-      border-radius: 3px;
-      padding: 2px 6px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    `;
-
-    const icon = this.getTypeIcon(type);
-    labelElement.textContent = `${icon} ${index + 1}: ${label}`;
-
     // 添加到页面
     document.body.appendChild(overlay);
-    document.body.appendChild(labelElement);
 
-    // 记录标记的元素和相关信息
-    this.markedElements.push(overlay, labelElement);
-    this.elementInfos.push({ elementInfo, index, overlay, label: labelElement });
+    // 记录标记的元素和相关信息（不包含标签）
+    this.markedElements.push(overlay);
+    this.elementInfos.push({ elementInfo, index, overlay, label: overlay }); // 使用overlay作为占位符
   }
 
   /**
@@ -608,13 +608,12 @@ export class ElementMarker {
    * 更新标记位置
    */
   private updateMarkerPositions(): void {
-    this.elementInfos.forEach(({ elementInfo, overlay, label }) => {
+    this.elementInfos.forEach(({ elementInfo, overlay }) => {
       const bounds = elementInfo.element.getBoundingClientRect();
 
       // 检查元素是否仍然可见
       if (bounds.width === 0 && bounds.height === 0) {
         overlay.style.display = 'none';
-        label.style.display = 'none';
         return;
       }
 
@@ -624,11 +623,6 @@ export class ElementMarker {
       overlay.style.left = `${bounds.left}px`;
       overlay.style.width = `${bounds.width}px`;
       overlay.style.height = `${bounds.height}px`;
-
-      // 显示并更新标签位置
-      label.style.display = 'block';
-      label.style.top = `${Math.max(0, bounds.top - 25)}px`;
-      label.style.left = `${bounds.left}px`;
     });
   }
 
