@@ -14,4 +14,8 @@ export default ({ id, onUpdate }: { id: string; onUpdate: () => void }) => {
       }
     });
   };
+
+  ws.onerror = () => {
+    // Silently ignore WebSocket connection errors in production
+  };
 };
