@@ -39,6 +39,10 @@ export interface MarkerConfig {
 
 export class ElementMarker {
   private markedElements: HTMLElement[] = [];
+  private scrollListener: (() => void) | null = null;
+  private elementInfos: Array<{ elementInfo: ElementInfo; index: number; overlay: HTMLElement; label: HTMLElement }> =
+    [];
+  private updateTimeout: number | null = null;
   private config: MarkerConfig = {
     showInputs: true,
     showButtons: true,
@@ -463,6 +467,9 @@ export class ElementMarker {
     elements.forEach((elementInfo, index) => {
       this.createMarker(elementInfo, index);
     });
+
+    // 设置滚动监听器
+    this.setupScrollListener();
   }
 
   /**
@@ -477,8 +484,8 @@ export class ElementMarker {
     overlay.className = 'element-marker-overlay';
     overlay.style.cssText = `
       position: fixed;
-      top: ${bounds.top + window.scrollY}px;
-      left: ${bounds.left + window.scrollX}px;
+      top: ${bounds.top}px;
+      left: ${bounds.left}px;
       width: ${bounds.width}px;
       height: ${bounds.height}px;
       pointer-events: none;
@@ -490,9 +497,9 @@ export class ElementMarker {
     const labelElement = document.createElement('div');
     labelElement.className = 'element-marker-label';
     labelElement.style.cssText = `
-      position: absolute;
-      top: -25px;
-      left: 0;
+      position: fixed;
+      top: ${bounds.top - 25}px;
+      left: ${bounds.left}px;
       ${this.getLabelStyles(type)}
       font-size: 11px;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -512,8 +519,9 @@ export class ElementMarker {
     document.body.appendChild(overlay);
     document.body.appendChild(labelElement);
 
-    // 记录标记的元素
+    // 记录标记的元素和相关信息
     this.markedElements.push(overlay, labelElement);
+    this.elementInfos.push({ elementInfo, index, overlay, label: labelElement });
   }
 
   /**
@@ -571,15 +579,83 @@ export class ElementMarker {
   }
 
   /**
+   * 设置滚动监听器
+   */
+  private setupScrollListener(): void {
+    if (this.scrollListener) {
+      window.removeEventListener('scroll', this.scrollListener);
+      document.removeEventListener('scroll', this.scrollListener, true);
+    }
+
+    this.scrollListener = () => {
+      // 使用 requestAnimationFrame 进行节流
+      if (this.updateTimeout) {
+        cancelAnimationFrame(this.updateTimeout);
+      }
+      this.updateTimeout = requestAnimationFrame(() => {
+        this.updateMarkerPositions();
+        this.updateTimeout = null;
+      });
+    };
+
+    // 监听窗口滚动
+    window.addEventListener('scroll', this.scrollListener, { passive: true });
+    // 监听所有滚动事件（捕获阶段）
+    document.addEventListener('scroll', this.scrollListener, { passive: true, capture: true });
+  }
+
+  /**
+   * 更新标记位置
+   */
+  private updateMarkerPositions(): void {
+    this.elementInfos.forEach(({ elementInfo, overlay, label }) => {
+      const bounds = elementInfo.element.getBoundingClientRect();
+
+      // 检查元素是否仍然可见
+      if (bounds.width === 0 && bounds.height === 0) {
+        overlay.style.display = 'none';
+        label.style.display = 'none';
+        return;
+      }
+
+      // 显示并更新覆盖层位置
+      overlay.style.display = 'block';
+      overlay.style.top = `${bounds.top}px`;
+      overlay.style.left = `${bounds.left}px`;
+      overlay.style.width = `${bounds.width}px`;
+      overlay.style.height = `${bounds.height}px`;
+
+      // 显示并更新标签位置
+      label.style.display = 'block';
+      label.style.top = `${Math.max(0, bounds.top - 25)}px`;
+      label.style.left = `${bounds.left}px`;
+    });
+  }
+
+  /**
    * 清除所有标记
    */
   clearMarkers(): void {
+    // 移除滚动监听器
+    if (this.scrollListener) {
+      window.removeEventListener('scroll', this.scrollListener);
+      document.removeEventListener('scroll', this.scrollListener, true);
+      this.scrollListener = null;
+    }
+
+    // 取消未完成的动画帧
+    if (this.updateTimeout) {
+      cancelAnimationFrame(this.updateTimeout);
+      this.updateTimeout = null;
+    }
+
     this.markedElements.forEach(element => {
       if (element && element.parentNode) {
         element.parentNode.removeChild(element);
       }
     });
     this.markedElements = [];
+    this.elementInfos = [];
   }
 
   /**
