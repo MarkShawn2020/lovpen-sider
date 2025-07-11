@@ -35,9 +35,49 @@ export interface UserSettings {
   updatedAt?: string;
 }
 
+export interface DatabaseFormTemplateData {
+  id?: string;
+  userId?: string;
+  name: string;
+  description?: string;
+  data: Record<string, string | string[] | boolean>;
+  tags: string[];
+  isDefault: boolean;
+  timestamp: number;
+  createdAt?: string;
+  updatedAt?: string;
+  synced?: boolean;
+  syncedAt?: string;
+}
+
+export interface DatabaseFormDefinitionData {
+  id?: string;
+  userId?: string;
+  name: string;
+  description?: string;
+  urlPattern: string;
+  formSelector: string;
+  fields: Array<{
+    id: string;
+    type: string;
+    label: string;
+    selector: string;
+    order: number;
+    required: boolean;
+    placeholder?: string;
+    options?: Array<{ value: string; label: string }>;
+    validation?: Record<string, unknown>;
+  }>;
+  timestamp: number;
+  createdAt?: string;
+  updatedAt?: string;
+  synced?: boolean;
+  syncedAt?: string;
+}
+
 export interface SyncQueueItem {
   id: string;
-  type: 'capture' | 'text_processing' | 'settings';
+  type: 'capture' | 'text_processing' | 'settings' | 'form_template' | 'form_definition';
   action: 'create' | 'update' | 'delete';
   data: unknown;
   timestamp: number;

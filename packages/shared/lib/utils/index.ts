@@ -2,6 +2,24 @@ export * from './helpers.js';
 export * from './colorful-logger.js';
 export * from './init-app-with-shadow.js';
 export type * from './types.js';
-export * from '../storage/index.js';
+export type * from '../types/form-filler.js';
 export * from './markdown-converter.js';
 export * from './element-selector.js';
+export * from './form-detector.js';
+export * from './form-filler.js';
+
+// 导出storage相关功能，但不导出类型以避免冲突
+export { dbManager } from '../storage/database-manager.js';
+export { syncManager } from '../storage/sync-manager.js';
+
+// 显式重导出数据库类型，避免重复导出
+export type {
+  DatabaseFormTemplateData,
+  DatabaseFormDefinitionData,
+  CaptureData,
+  TextProcessingData,
+  UserSettings,
+  SyncQueueItem,
+  UserStats,
+  SyncStatus,
+} from '../types/database.js';

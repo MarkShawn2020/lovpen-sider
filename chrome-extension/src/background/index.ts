@@ -147,7 +147,7 @@ chrome.commands.onCommand.addListener(async command => {
     console.error('[SuperSider] Error handling command:', error);
 
     // 显示错误通知（仅在非复制相关错误时显示）
-    if (!error.message.includes('clipboard') && !error.message.includes('connection')) {
+    if (error instanceof Error && !error.message.includes('clipboard') && !error.message.includes('connection')) {
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icon-34.png'),
@@ -176,7 +176,7 @@ async function copyToClipboard(text: string) {
           await navigator.clipboard.writeText(textToCopy);
           return { success: true };
         } catch (error) {
-          return { success: false, error: error.message };
+          return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
         }
       },
       args: [text],

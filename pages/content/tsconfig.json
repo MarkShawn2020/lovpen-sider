@@ -5,7 +5,8 @@
     "paths": {
       "@src/*": ["src/*"]
     },
-    "types": ["chrome", "node"]
+    "types": ["chrome", "node"],
+    "typeRoots": ["../../node_modules/@types", "../../packages/shared/types"]
   },
   "include": ["src", "build.mts"]
 }

@@ -1,4 +1,6 @@
 import TurndownService from 'turndown';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import { gfm } from 'turndown-plugin-gfm';
 
 export interface MarkdownConverterOptions {

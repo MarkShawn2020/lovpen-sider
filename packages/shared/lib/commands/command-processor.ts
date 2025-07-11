@@ -12,7 +12,7 @@ export interface CommandContext {
 export interface CommandResult {
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 export interface Command {
@@ -154,6 +154,218 @@ export class CommandProcessor {
         message: '命令历史已清空',
       }),
     });
+
+    // 表单相关命令
+    this.registerFormCommands();
+  }
+
+  /**
+   * 注册表单相关命令
+   */
+  private registerFormCommands() {
+    // /detectForms 命令
+    this.registerCommand({
+      name: 'detectForms',
+      description: '检测当前页面的表单',
+      execute: async () => {
+        try {
+          // 通过消息传递给content script执行
+          const result = await this.sendMessageToContentScript({
+            action: 'detectForms',
+          });
+
+          if (result.success) {
+            const forms = (result.data as unknown[]) || [];
+            const formsInfo = forms
+              .map((form: unknown, index: number) => {
+                const formObj = form as Record<string, unknown>;
+                return `${index + 1}. ${formObj.formType as string}表单 (${(formObj.fields as unknown[]).length}个字段, 置信度: ${Math.round((formObj.confidence as number) * 100)}%)`;
+              })
+              .join('\n');
+
+            return {
+              success: true,
+              message: `检测到 ${forms.length} 个表单:\n${formsInfo}`,
+              data: forms,
+            };
+          } else {
+            return {
+              success: false,
+              message: result.message || '表单检测失败',
+            };
+          }
+        } catch (error) {
+          return {
+            success: false,
+            message: `表单检测失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          };
+        }
+      },
+    });
+
+    // /fillForm 命令
+    this.registerCommand({
+      name: 'fillForm',
+      description: '填写表单 - 用法: /fillForm <模板名称> [表单选择器]',
+      execute: async args => {
+        if (args.length === 0) {
+          return {
+            success: false,
+            message: '请指定模板名称。用法: /fillForm <模板名称> [表单选择器]',
+          };
+        }
+
+        const templateName = args[0];
+        const formSelector = args[1] || 'form:first-of-type';
+
+        try {
+          // 获取表单模板
+          const template = await this.getFormTemplate(templateName);
+          if (!template) {
+            return {
+              success: false,
+              message: `未找到模板: ${templateName}`,
+            };
+          }
+
+          // 发送填写请求到content script
+          const result = await this.sendMessageToContentScript({
+            action: 'fillForm',
+            data: {
+              formSelector,
+              data: (template as Record<string, unknown>).data,
+              options: {
+                simulateTyping: true,
+                typingDelay: 50,
+                triggerEvents: true,
+                scrollToField: true,
+              },
+            },
+          });
+
+          return result;
+        } catch (error) {
+          return {
+            success: false,
+            message: `填写表单失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          };
+        }
+      },
+    });
+
+    // /clearForm 命令
+    this.registerCommand({
+      name: 'clearForm',
+      description: '清空表单 - 用法: /clearForm [表单选择器]',
+      execute: async args => {
+        const formSelector = args[0] || 'form:first-of-type';
+
+        try {
+          const result = await this.sendMessageToContentScript({
+            action: 'clearForm',
+            data: { formSelector },
+          });
+
+          return result;
+        } catch (error) {
+          return {
+            success: false,
+            message: `清空表单失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          };
+        }
+      },
+    });
+
+    // /saveFormTemplate 命令
+    this.registerCommand({
+      name: 'saveFormTemplate',
+      description: '保存表单模板 - 用法: /saveFormTemplate <模板名称> <数据JSON>',
+      execute: async args => {
+        if (args.length < 2) {
+          return {
+            success: false,
+            message: '请提供模板名称和数据。用法: /saveFormTemplate <模板名称> <数据JSON>',
+          };
+        }
+
+        const templateName = args[0];
+        const dataString = args.slice(1).join(' ');
+
+        try {
+          const data = JSON.parse(dataString);
+          await this.saveFormTemplate(templateName, data);
+
+          return {
+            success: true,
+            message: `表单模板 "${templateName}" 已保存`,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            message: `保存模板失败: ${error instanceof Error ? error.message : '数据格式无效'}`,
+          };
+        }
+      },
+    });
+
+    // /listFormTemplates 命令
+    this.registerCommand({
+      name: 'listFormTemplates',
+      description: '列出所有表单模板',
+      execute: async () => {
+        try {
+          const templates = await this.listFormTemplates();
+
+          if (templates.length === 0) {
+            return {
+              success: true,
+              message: '暂无保存的表单模板',
+            };
+          }
+
+          const templateList = (templates as Record<string, unknown>[])
+            .map(
+              (template: Record<string, unknown>, index: number) =>
+                `${index + 1}. ${template.name as string} (${(template.tags as string[])?.join(', ') || '无标签'})`,
+            )
+            .join('\n');
+
+          return {
+            success: true,
+            message: `共 ${templates.length} 个模板:\n${templateList}`,
+            data: templates,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            message: `获取模板列表失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          };
+        }
+      },
+    });
+
+    // /validateForm 命令
+    this.registerCommand({
+      name: 'validateForm',
+      description: '验证表单 - 用法: /validateForm [表单选择器]',
+      execute: async args => {
+        const formSelector = args[0] || 'form:first-of-type';
+
+        try {
+          const result = await this.sendMessageToContentScript({
+            action: 'validateForm',
+            data: { formSelector },
+          });
+
+          return result;
+        } catch (error) {
+          return {
+            success: false,
+            message: `验证表单失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          };
+        }
+      },
+    });
   }
 
   /**
@@ -206,6 +418,97 @@ export class CommandProcessor {
         success: false,
         message: `文件更新失败: ${error instanceof Error ? error.message : '未知错误'}`,
       };
+    }
+  }
+
+  /**
+   * 发送消息到content script
+   */
+  private async sendMessageToContentScript(message: unknown): Promise<CommandResult> {
+    try {
+      // 这里应该通过chrome.tabs.sendMessage发送消息
+      // 由于这是在shared包中，实际的chrome API调用需要在background script中处理
+      // 这里返回一个模拟结果，实际实现需要在使用这个类的地方处理
+      return {
+        success: false,
+        message: '需要在background script中实现chrome API调用',
+        data: message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `消息发送失败: ${error instanceof Error ? error.message : '未知错误'}`,
+      };
+    }
+  }
+
+  /**
+   * 获取表单模板
+   */
+  private async getFormTemplate(templateName: string): Promise<unknown> {
+    try {
+      // 这里应该从存储中获取模板
+      // 实际实现需要使用chrome.storage API
+      const templates = await this.listFormTemplates();
+      return (templates as Record<string, unknown>[]).find(
+        (template: Record<string, unknown>) => template.name === templateName,
+      );
+    } catch (error) {
+      throw new Error(`获取模板失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  }
+
+  /**
+   * 保存表单模板
+   */
+  private async saveFormTemplate(templateName: string, data: Record<string, unknown>): Promise<void> {
+    try {
+      // 这里应该保存到chrome.storage
+      // 实际实现需要在使用这个类的地方处理
+      const template = {
+        id: `template_${Date.now()}`,
+        name: templateName,
+        description: `表单模板 - ${templateName}`,
+        data,
+        tags: [],
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timestamp: Date.now(),
+      };
+
+      // 模拟保存操作
+      console.log('保存表单模板:', template);
+    } catch (error) {
+      throw new Error(`保存模板失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  }
+
+  /**
+   * 列出表单模板
+   */
+  private async listFormTemplates(): Promise<unknown[]> {
+    try {
+      // 这里应该从chrome.storage获取模板列表
+      // 返回模拟数据，实际实现需要在使用这个类的地方处理
+      return [
+        {
+          id: 'template_1',
+          name: '个人信息',
+          description: '基本个人信息模板',
+          data: {
+            name: '张三',
+            email: 'zhangsan@example.com',
+            phone: '13800138000',
+          },
+          tags: ['个人', '基础'],
+          isDefault: true,
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+        },
+      ];
+    } catch (error) {
+      throw new Error(`获取模板列表失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   }
 }
