@@ -369,6 +369,26 @@ chrome.runtime.onMessage.addListener(
           error: error instanceof Error ? error.message : '清除失败',
         });
       }
+    } else if (msg.action === 'fillAllTextInputs') {
+      // 填充所有文本输入框
+      try {
+        const text = (msg.data as { text?: string })?.text || '111';
+        const result = elementMarker.fillAllTextInputs(text);
+
+        sendResponse({
+          success: result.success,
+          message: result.message,
+          data: {
+            filledCount: result.filledCount,
+          },
+        });
+      } catch (error) {
+        console.error('填充文本输入框失败:', error);
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : '填充失败',
+        });
+      }
     }
 
     return false;

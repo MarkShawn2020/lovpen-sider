@@ -743,4 +743,56 @@ export class ElementMarker {
 
     return stats;
   }
+
+  /**
+   * 填充所有可输入文字的输入框
+   */
+  fillAllTextInputs(text: string = '111'): { success: boolean; filledCount: number; message: string } {
+    const textInputSelectors = [
+      'input[type="text"]',
+      'input[type="email"]',
+      'input[type="search"]',
+      'input[type="url"]',
+      'input[type="tel"]',
+      'input:not([type])', // 默认类型为text
+      'textarea',
+    ];
+
+    let filledCount = 0;
+    const errors: string[] = [];
+
+    textInputSelectors.forEach(selector => {
+      const elements = Array.from(document.querySelectorAll(selector)) as HTMLInputElement[];
+
+      elements.forEach((element, index) => {
+        try {
+          // 检查元素是否可见和可编辑
+          if (this.isElementVisible(element) && !element.disabled && !element.readOnly) {
+            // 聚焦元素
+            element.focus();
+
+            // 设置值
+            element.value = text;
+
+            // 触发输入事件以确保页面响应
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+
+            filledCount++;
+          }
+        } catch (error) {
+          errors.push(`填充 ${selector}[${index}] 失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        }
+      });
+    });
+
+    return {
+      success: filledCount > 0,
+      filledCount,
+      message:
+        filledCount > 0
+          ? `成功填充了 ${filledCount} 个文本输入框${errors.length > 0 ? `，${errors.length} 个失败` : ''}`
+          : '没有找到可填充的文本输入框',
+    };
+  }
 }

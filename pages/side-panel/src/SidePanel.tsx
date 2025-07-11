@@ -1098,7 +1098,8 @@ const DeveloperModule = () => {
         commandInput.startsWith('/markAllElements') ||
         commandInput.startsWith('/markInputs') ||
         commandInput.startsWith('/markContainers') ||
-        commandInput.startsWith('/clearAllMarks')
+        commandInput.startsWith('/clearAllMarks') ||
+        commandInput.startsWith('/fillAllTextInputs')
       ) {
         const parts = commandInput.trim().split(/\s+/);
         const commandName = parts[0].substring(1);
@@ -1231,6 +1232,17 @@ const DeveloperModule = () => {
             message: response.message || (response.success ? '已清除所有标记' : '清除失败'),
             data: response.data,
           };
+        } else if (commandName === 'fillAllTextInputs') {
+          const text = args[0] || '111';
+          const response = await chrome.tabs.sendMessage(tab.id!, {
+            action: 'fillAllTextInputs',
+            data: { text },
+          });
+          result = {
+            success: response.success,
+            message: response.message || (response.success ? '已填充所有文本输入框' : '填充失败'),
+            data: response.data,
+          };
         } else {
           result = {
             success: false,
@@ -1288,6 +1300,7 @@ const DeveloperModule = () => {
     { command: '/clearAllMarks', description: '清除所有元素标记' },
     { command: '/detectForms', description: '检测并标记页面表单字段' },
     { command: '/fillForm 个人信息', description: '使用个人信息模板填写表单' },
+    { command: '/fillAllTextInputs', description: '在所有文本输入框中填充"111"' },
     { command: '/clearHighlights', description: '清除表单字段标记' },
     { command: '/debugForms', description: '调试表单检测（查看控制台）' },
   ];
