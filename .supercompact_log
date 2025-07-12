@@ -1,0 +1,12 @@
+SuperCompact 执行日志
+
+=== 2025-07-12 18:33:00 ===
+状态: 成功
+操作: 会话压缩 + 项目文件更新 + Git提交
+主要变更: 
+- 重构元素标记系统，实现优先级互斥检测
+- 增强可交互元素识别（ARIA角色、自定义选择框）
+- 修复滚动跟随功能
+- 新增 /fillAllTextInputs 命令
+- 移除标签显示，优化界面
+文件更新: element-marker.ts, index.ts, SidePanel.tsx
