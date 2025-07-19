@@ -597,15 +597,15 @@ export class ElementMarker {
    */
   private getMarkerStyles(type: ElementType): string {
     const styles = {
-      input: 'border: 3px solid #3b82f6; background: rgba(59, 130, 246, 0.1);',
-      button: 'border: 3px solid #10b981; background: rgba(16, 185, 129, 0.1);',
-      link: 'border: 3px solid #8b5cf6; background: rgba(139, 92, 246, 0.1);',
-      form: 'border: 3px solid #f59e0b; background: rgba(245, 158, 11, 0.1);',
-      navigation: 'border: 3px solid #ef4444; background: rgba(239, 68, 68, 0.1);',
-      container: 'border: 2px dashed #6b7280; background: rgba(107, 114, 128, 0.05);',
-      text: 'border: 2px dotted #84cc16; background: rgba(132, 204, 22, 0.05);',
-      image: 'border: 3px solid #ec4899; background: rgba(236, 72, 153, 0.1);',
-      media: 'border: 3px solid #06b6d4; background: rgba(6, 182, 212, 0.1);',
+      input: 'border: 3px solid #629A90; background: rgba(98, 154, 144, 0.1);',
+      button: 'border: 3px solid #C2C07D; background: rgba(194, 192, 125, 0.1);',
+      link: 'border: 3px solid #B49FD8; background: rgba(180, 159, 216, 0.1);',
+      form: 'border: 3px solid #97B5D5; background: rgba(151, 181, 213, 0.1);',
+      navigation: 'border: 3px solid #CC785C; background: rgba(204, 120, 92, 0.1);',
+      container: 'border: 2px dashed #87867F; background: rgba(135, 134, 127, 0.05);',
+      text: 'border: 2px dotted #D2BEDF; background: rgba(210, 190, 223, 0.05);',
+      image: 'border: 3px solid #D97757; background: rgba(217, 119, 87, 0.1);',
+      media: 'border: 3px solid #D97757; background: rgba(217, 119, 87, 0.1);',
     };
     return styles[type] || styles.container;
   }
@@ -615,13 +615,13 @@ export class ElementMarker {
    */
   private getLabelStyles(type: ElementType): string {
     const styles = {
-      input: 'background: #3b82f6; color: white;',
-      button: 'background: #10b981; color: white;',
-      link: 'background: #8b5cf6; color: white;',
-      form: 'background: #f59e0b; color: white;',
-      navigation: 'background: #ef4444; color: white;',
-      container: 'background: #6b7280; color: white;',
-      text: 'background: #84cc16; color: white;',
+      input: 'background: #629A90; color: white;',
+      button: 'background: #C2C07D; color: white;',
+      link: 'background: #B49FD8; color: white;',
+      form: 'background: #97B5D5; color: white;',
+      navigation: 'background: #CC785C; color: white;',
+      container: 'background: #87867F; color: white;',
+      text: 'background: #D2BEDF; color: white;',
       image: 'background: #ec4899; color: white;',
       media: 'background: #06b6d4; color: white;',
     };
