@@ -338,7 +338,7 @@ export class ElementSelector {
     this.hideStatusMessage();
 
     const statusDiv = document.createElement('div');
-    statusDiv.id = 'supersider-status';
+    statusDiv.id = 'lovpensider-status';
     statusDiv.style.cssText = `
       position: fixed;
       top: 20px;
@@ -358,7 +358,7 @@ export class ElementSelector {
   }
 
   private hideStatusMessage(): void {
-    const statusDivs = document.querySelectorAll('#supersider-status');
+    const statusDivs = document.querySelectorAll('#lovpensider-status');
     statusDivs.forEach(div => div.remove());
   }
 

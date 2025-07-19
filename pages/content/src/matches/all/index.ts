@@ -1,9 +1,9 @@
 import { ElementSelector, FormDetector, FormFiller, ElementMarker } from '@extension/shared';
 import type { FormFillRequest } from '@extension/shared';
 
-console.log('[SuperSider] Content script loaded');
+console.log('[LovpenSider] Content script loaded');
 
-class SuperSiderElementSelector extends ElementSelector {
+class LovpenSiderElementSelector extends ElementSelector {
   protected onElementSelected(): void {
     const data = this.getSelectedElementData();
     if (data) {
@@ -46,7 +46,7 @@ class SuperSiderElementSelector extends ElementSelector {
 }
 
 // 创建选择器实例
-const selector = new SuperSiderElementSelector({
+const selector = new LovpenSiderElementSelector({
   enableNavigation: true,
   showStatusMessages: true,
 });
@@ -96,7 +96,7 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: true });
           })
           .catch(error => {
-            console.error('[SuperSider] Failed to copy to clipboard:', error);
+            console.error('[LovpenSider] Failed to copy to clipboard:', error);
             sendResponse({ success: false, error: error.message });
           });
         return true; // 保持消息通道开放
@@ -396,4 +396,4 @@ chrome.runtime.onMessage.addListener(
 );
 
 // 导出选择器实例供调试使用
-(window as unknown as { superSiderSelector: typeof selector }).superSiderSelector = selector;
+(window as unknown as { lovpenSiderSelector: typeof selector }).lovpenSiderSelector = selector;

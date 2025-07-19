@@ -168,14 +168,14 @@ try {
   // 成功通知
   chrome.notifications.create({
     type: 'basic',
-    title: 'Super Sider',
+    title: 'Lovpen Sider',
     message: `✅ 已复制：${formatName}`,
   });
 } catch (error) {
   // 失败但仍提供价值
   chrome.notifications.create({
     type: 'basic', 
-    title: 'Super Sider',
+    title: 'Lovpen Sider',
     message: `⚠️ 已生成（剪贴板访问失败）：${formatName}`,
   });
   // 在控制台输出文本供手动复制

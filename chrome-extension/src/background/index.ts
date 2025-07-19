@@ -2,16 +2,16 @@ import 'webextension-polyfill';
 import { dbManager } from '@extension/shared';
 import { copyFormatStorage } from '@extension/storage';
 
-console.log('[SuperSider] Background script loaded');
+console.log('[LovpenSider] Background script loaded');
 
 // 初始化数据库
 dbManager
   .initialize()
   .then(() => {
-    console.log('[SuperSider] Database initialized');
+    console.log('[LovpenSider] Database initialized');
   })
   .catch(error => {
-    console.error('[SuperSider] Database initialization failed:', error);
+    console.error('[LovpenSider] Database initialization failed:', error);
   });
 
 // 启用侧边面板自动打开
@@ -21,7 +21,7 @@ if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
 
 // 监听消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('[SuperSider] Background received message:', request);
+  console.log('[LovpenSider] Background received message:', request);
 
   if (request.action === 'convertToMarkdown') {
     sendResponse({ success: true });
@@ -44,33 +44,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
     // 可以在这里注入内容脚本或进行其他初始化操作
-    console.log('[SuperSider] Tab updated:', tab.url);
+    console.log('[LovpenSider] Tab updated:', tab.url);
   }
 });
 
 // 监听快捷键命令
 chrome.commands.onCommand.addListener(async command => {
-  console.log('[SuperSider] Command received:', command);
+  console.log('[LovpenSider] Command received:', command);
 
   try {
     // 检查快捷键是否启用
     const shortcuts = await copyFormatStorage.getShortcuts();
-    console.log('[SuperSider] Available shortcuts:', shortcuts);
+    console.log('[LovpenSider] Available shortcuts:', shortcuts);
 
     // 如果 shortcuts 为 undefined 或者该命令不存在，则使用默认启用状态
     const isEnabled = shortcuts && shortcuts[command] ? shortcuts[command].enabled : true;
 
     if (!isEnabled) {
-      console.log('[SuperSider] Shortcut disabled:', command);
+      console.log('[LovpenSider] Shortcut disabled:', command);
       return;
     }
 
-    console.log('[SuperSider] Shortcut enabled, proceeding...');
+    console.log('[LovpenSider] Shortcut enabled, proceeding...');
 
     // 获取当前活动标签页
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab.title || !tab.url) {
-      console.error('[SuperSider] Cannot get current tab info');
+      console.error('[LovpenSider] Cannot get current tab info');
       return;
     }
 
@@ -130,28 +130,28 @@ chrome.commands.onCommand.addListener(async command => {
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icon-34.png'),
-        title: 'Super Sider',
+        title: 'Lovpen Sider',
         message: copySuccess ? `✅ 已复制：${formatName}` : `⚠️ 已生成（剪贴板访问失败）：${formatName}`,
       });
 
       if (copySuccess) {
-        console.log('[SuperSider] Successfully copied:', formatName);
+        console.log('[LovpenSider] Successfully copied:', formatName);
       } else {
-        console.warn('[SuperSider] Generated but failed to copy:', formatName, 'Error:', errorMessage);
-        console.log('[SuperSider] Generated text:', formattedText);
+        console.warn('[LovpenSider] Generated but failed to copy:', formatName, 'Error:', errorMessage);
+        console.log('[LovpenSider] Generated text:', formattedText);
       }
     } else {
-      console.error('[SuperSider] Unknown command:', command);
+      console.error('[LovpenSider] Unknown command:', command);
     }
   } catch (error) {
-    console.error('[SuperSider] Error handling command:', error);
+    console.error('[LovpenSider] Error handling command:', error);
 
     // 显示错误通知（仅在非复制相关错误时显示）
     if (error instanceof Error && !error.message.includes('clipboard') && !error.message.includes('connection')) {
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icon-34.png'),
-        title: 'Super Sider',
+        title: 'Lovpen Sider',
         message: '❌ 操作失败',
       });
     }
@@ -184,14 +184,14 @@ async function copyToClipboard(text: string) {
 
     return;
   } catch (error) {
-    console.error('[SuperSider] Failed to copy to clipboard:', error);
+    console.error('[LovpenSider] Failed to copy to clipboard:', error);
     throw error;
   }
 }
 
 // 测试快捷键是否注册成功
 chrome.commands.getAll().then(commands => {
-  console.log('[SuperSider] Registered commands:', commands);
+  console.log('[LovpenSider] Registered commands:', commands);
 });
 
-console.log('[SuperSider] Background script initialized');
+console.log('[LovpenSider] Background script initialized');

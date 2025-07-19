@@ -24,7 +24,7 @@ const manifest = {
   name: '__MSG_extensionName__',
   browser_specific_settings: {
     gecko: {
-      id: 'super-sider@example.com',
+      id: 'lovpen-sider@example.com',
       strict_min_version: '109.0',
     },
   },
@@ -50,7 +50,7 @@ const manifest = {
   action: {
     default_popup: 'popup/index.html',
     default_icon: 'icon-34.png',
-    default_title: '打开 Super Sider',
+    default_title: '打开 Lovpen Sider',
   },
   icons: {
     '16': 'icon-34.png',
