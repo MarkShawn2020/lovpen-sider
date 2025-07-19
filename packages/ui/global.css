@@ -2,6 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Lovpen Design Theme CSS Variables */
+:root {
+  --color-primary: #D97757;
+  --color-text-main: #181818;
+  --color-text-faded: #87867F;
+  --color-background-main: #F9F9F7;
+  --color-background-dark: #141413;
+  --color-background-ivory-medium: #F0EEE6;
+  --color-background-oat: #F7F4EC;
+  --color-background-clay: #CC785C;
+  --color-background-faded: #3D3D3A;
+  --color-border-default: #87867F;
+  --color-swatch-slate-light: #87867F;
+  --color-swatch-cloud-light: #E8E6DC;
+  --color-swatch-fig: #B49FD8;
+  --color-swatch-olive: #C2C07D;
+  --color-swatch-cactus: #629A90;
+  --color-swatch-sky: #97B5D5;
+  --color-swatch-heather: #D2BEDF;
+}
+
+/* Logo Styling */
+svg path:nth-child(1) {
+  fill: var(--color-primary) !important;
+}
+svg path:nth-child(2) {
+  fill: var(--color-background-clay) !important;
+}
+svg path:nth-child(3) {
+  fill: var(--color-swatch-cactus) !important;
+}
+
+/* Ensure logo colors work in different contexts */
+.logo svg path:nth-child(1),
+[class*="logo"] svg path:nth-child(1) {
+  fill: var(--color-primary) !important;
+}
+.logo svg path:nth-child(2),
+[class*="logo"] svg path:nth-child(2) {
+  fill: var(--color-background-clay) !important;
+}
+.logo svg path:nth-child(3),
+[class*="logo"] svg path:nth-child(3) {
+  fill: var(--color-swatch-cactus) !important;
+}
+
+/* Fallback theme utility classes using CSS variables */
+.theme-bg-primary { background-color: var(--color-primary) !important; }
+.theme-bg-main { background-color: var(--color-background-main) !important; }
+.theme-bg-dark { background-color: var(--color-background-dark) !important; }
+.theme-bg-oat { background-color: var(--color-background-oat) !important; }
+.theme-bg-clay { background-color: var(--color-background-clay) !important; }
+.theme-bg-cactus { background-color: var(--color-swatch-cactus) !important; }
+.theme-bg-olive { background-color: var(--color-swatch-olive) !important; }
+.theme-bg-ivory { background-color: var(--color-background-ivory-medium) !important; }
+
+.theme-text-main { color: var(--color-text-main) !important; }
+.theme-text-faded { color: var(--color-text-faded) !important; }
+.theme-text-primary { color: var(--color-primary) !important; }
+.theme-text-clay { color: var(--color-background-clay) !important; }
+.theme-text-cactus { color: var(--color-swatch-cactus) !important; }
+
+.theme-border-default { border-color: var(--color-border-default) !important; }
+.theme-border-primary { border-color: var(--color-primary) !important; }
+
+/* Button hover states using CSS variables */
+.theme-btn-primary {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+.theme-btn-primary:hover {
+  background-color: var(--color-background-clay) !important;
+}
+
+.theme-btn-cactus {
+  background-color: var(--color-swatch-cactus) !important;
+  color: white !important;
+}
+.theme-btn-cactus:hover {
+  background-color: var(--color-swatch-olive) !important;
+}
+
+.theme-btn-clay {
+  background-color: var(--color-background-clay) !important;
+  color: white !important;
+}
+.theme-btn-clay:hover {
+  background-color: var(--color-primary) !important;
+}
+
 body {
   margin: 0;
   padding: 0;

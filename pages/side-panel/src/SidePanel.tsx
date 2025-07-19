@@ -51,12 +51,12 @@ const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="mb-3 rounded border border-gray-200 bg-white p-3 dark:border-gray-600 dark:bg-gray-900">
+    <div className="border-border-default bg-background-main mb-3 rounded border p-3 dark:border-gray-600 dark:bg-gray-900">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-sm font-medium">下载设置</h4>
         <button
           onClick={onClose}
-          className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600">
+          className="bg-background-ivory-medium text-text-faded hover:bg-swatch-cloud-light rounded px-2 py-1 text-xs dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600">
           ✕
         </button>
       </div>
@@ -64,7 +64,7 @@ const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
       <div className="space-y-3">
         {/* 是否询问位置 */}
         <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-700 dark:text-gray-300">每次询问保存位置</label>
+          <label className="text-text-main text-sm dark:text-gray-300">每次询问保存位置</label>
           <input
             type="checkbox"
             checked={settings.askForLocation}
@@ -75,7 +75,7 @@ const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
 
         {/* 使用默认路径 */}
         <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-700 dark:text-gray-300">使用默认路径</label>
+          <label className="text-text-main text-sm dark:text-gray-300">使用默认路径</label>
           <input
             type="checkbox"
             checked={settings.useDefaultPath}
@@ -88,13 +88,13 @@ const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
         {/* 默认路径输入 */}
         {settings.useDefaultPath && !settings.askForLocation && (
           <div>
-            <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">默认下载路径</label>
+            <label className="text-text-faded mb-1 block text-xs dark:text-gray-400">默认下载路径</label>
             <input
               type="text"
               value={settings.defaultPath}
               onChange={e => updateSetting('defaultPath', e.target.value)}
               placeholder="Downloads"
-              className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-800"
+              className="border-border-default dark:bg-background-dark w-full rounded border px-2 py-1 text-xs dark:border-gray-600"
             />
           </div>
         )}
@@ -102,8 +102,8 @@ const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
         {/* 最后使用的路径显示 */}
         {settings.lastUsedPath && settings.lastUsedPath !== 'Downloads' && (
           <div>
-            <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">最后使用的路径</label>
-            <div className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            <label className="text-text-faded mb-1 block text-xs dark:text-gray-400">最后使用的路径</label>
+            <div className="bg-background-ivory-medium text-text-main dark:bg-background-dark rounded px-2 py-1 text-xs dark:text-gray-300">
               {settings.lastUsedPath}
             </div>
           </div>
@@ -111,7 +111,7 @@ const DownloadSettingsPanel = ({ onClose }: { onClose: () => void }) => {
 
         {/* 下载说明 */}
         {!settings.askForLocation && (
-          <div className="mt-2 rounded bg-yellow-50 p-2 text-xs text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+          <div className="bg-background-oat text-text-main mt-2 rounded p-2 text-xs dark:bg-yellow-900/20 dark:text-yellow-300">
             <div className="mb-1 font-medium">⚠️ 注意</div>
             <div>
               如果Chrome浏览器设置中开启了"下载前询问每个文件的保存位置"，仍然会显示保存对话框。这是浏览器级别的限制，扩展无法绕过。
@@ -524,22 +524,26 @@ const SimpleCaptureModule = () => {
 
   return (
     <div className="flex h-full flex-col p-4">
-      <h2 className="mb-4 text-lg font-semibold">页面捕获</h2>
+      <h2 className="theme-text-main mb-4 text-lg font-semibold">页面捕获</h2>
 
       <div className="mb-4 space-y-2">
         <div className="flex space-x-2">
           {!isSelecting ? (
             <button
               onClick={startSelection}
-              className="flex-1 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+              className="bg-primary hover:bg-background-clay theme-btn-primary flex-1 rounded px-4 py-2 text-white">
               🎯 开始选择元素
             </button>
           ) : (
-            <button onClick={stopSelection} className="flex-1 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+            <button
+              onClick={stopSelection}
+              className="bg-background-clay hover:bg-primary theme-btn-clay flex-1 rounded px-4 py-2 text-white">
               ⏹️ 停止选择
             </button>
           )}
-          <button onClick={smartSelect} className="flex-1 rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">
+          <button
+            onClick={smartSelect}
+            className="bg-swatch-cactus hover:bg-swatch-olive theme-btn-cactus flex-1 rounded px-4 py-2 text-white">
             🤖 智能选择
           </button>
         </div>
@@ -547,30 +551,30 @@ const SimpleCaptureModule = () => {
 
       {/* DOM路径显示 */}
       {domPath && (
-        <div className="mb-4 rounded border border-gray-200 p-3 dark:border-gray-600">
+        <div className="border-border-default mb-4 rounded border p-3 dark:border-gray-600">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-medium">DOM路径</h3>
             <div className="flex space-x-1">
               <button
                 onClick={() => applyDomPath(domPath)}
-                className="rounded bg-green-100 px-2 py-1 text-xs text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
+                className="bg-swatch-cactus/20 text-swatch-cactus hover:bg-swatch-cactus/30 rounded px-2 py-1 text-xs dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
                 🎯 选中
               </button>
               <button
                 onClick={copyDomPath}
-                className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                className="bg-background-ivory-medium text-text-main hover:bg-swatch-cloud-light rounded px-2 py-1 text-xs dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                 📋 复制
               </button>
               <button
                 onClick={startEditPath}
-                className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
+                className="text-background-clay rounded bg-blue-100 px-2 py-1 text-xs hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
                 ✏️ 编辑
               </button>
             </div>
           </div>
 
           {!isEditingPath ? (
-            <code className="block rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            <code className="bg-background-ivory-medium text-text-main dark:bg-background-dark block rounded p-2 text-xs dark:text-gray-300">
               {domPath}
             </code>
           ) : (
@@ -578,20 +582,20 @@ const SimpleCaptureModule = () => {
               <textarea
                 value={editPathValue}
                 onChange={e => setEditPathValue(e.target.value)}
-                className="w-full rounded border border-gray-300 p-2 font-mono text-xs dark:border-gray-600 dark:bg-gray-800"
+                className="border-border-default dark:bg-background-dark w-full rounded border p-2 font-mono text-xs dark:border-gray-600"
                 rows={3}
                 placeholder="输入CSS选择器路径..."
               />
-              {pathError && <p className="text-xs text-red-600 dark:text-red-400">{pathError}</p>}
+              {pathError && <p className="text-background-clay dark:text-background-clay text-xs">{pathError}</p>}
               <div className="flex space-x-2">
                 <button
                   onClick={saveEditPath}
-                  className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700">
+                  className="bg-swatch-cactus hover:bg-swatch-olive rounded px-3 py-1 text-xs text-white">
                   ✓ 保存
                 </button>
                 <button
                   onClick={cancelEditPath}
-                  className="rounded bg-gray-500 px-3 py-1 text-xs text-white hover:bg-gray-600">
+                  className="bg-background-faded rounded px-3 py-1 text-xs text-white hover:bg-gray-600">
                   ✗ 取消
                 </button>
               </div>
@@ -608,22 +612,22 @@ const SimpleCaptureModule = () => {
               <div className="flex space-x-2">
                 <button
                   onClick={downloadMarkdown}
-                  className="rounded bg-green-100 px-3 py-1 text-sm text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
+                  className="bg-swatch-cactus/20 text-swatch-cactus hover:bg-swatch-cactus/30 rounded px-3 py-1 text-sm dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
                   📥 下载
                 </button>
                 <button
                   onClick={() => setShowDownloadSettings(!showDownloadSettings)}
-                  className="rounded bg-blue-100 px-2 py-1 text-sm text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
+                  className="text-background-clay rounded bg-blue-100 px-2 py-1 text-sm hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
                   ⚙️
                 </button>
                 <button
                   onClick={copyToClipboard}
-                  className="rounded bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                  className="bg-background-ivory-medium text-text-main hover:bg-swatch-cloud-light rounded px-3 py-1 text-sm dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                   📋 复制
                 </button>
                 <button
                   onClick={clearContent}
-                  className="rounded bg-red-100 px-3 py-1 text-sm text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
+                  className="bg-background-clay/20 text-background-clay hover:bg-background-clay/30 rounded px-3 py-1 text-sm dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
                   🗑️ 清空
                 </button>
               </div>
@@ -632,12 +636,12 @@ const SimpleCaptureModule = () => {
             {/* 下载设置面板 */}
             {showDownloadSettings && <DownloadSettingsPanel onClose={() => setShowDownloadSettings(false)} />}
 
-            <pre className="flex-1 overflow-auto rounded bg-gray-100 p-4 text-sm dark:bg-gray-800">
+            <pre className="bg-background-ivory-medium dark:bg-background-dark flex-1 overflow-auto rounded p-4 text-sm">
               {markdownOutput}
             </pre>
           </div>
         ) : (
-          <div className="py-8 text-center text-gray-500">
+          <div className="text-text-faded py-8 text-center">
             <div className="mb-2 text-4xl">📄</div>
             <p>选择网页元素来捕获内容</p>
           </div>
@@ -687,11 +691,11 @@ const SimpleTextModule = () => {
 
   return (
     <div className="flex h-full flex-col p-4">
-      <h2 className="mb-4 text-lg font-semibold">文本处理</h2>
+      <h2 className="theme-text-main mb-4 text-lg font-semibold">文本处理</h2>
 
       {/* 工具选择 */}
       <div className="mb-4">
-        <h3 className="mb-2 text-sm font-medium">选择工具</h3>
+        <h3 className="theme-text-main mb-2 text-sm font-medium">选择工具</h3>
         <div className="grid grid-cols-2 gap-2">
           {tools.map(tool => (
             <button
@@ -700,8 +704,8 @@ const SimpleTextModule = () => {
               className={cn(
                 'rounded border p-2 text-left transition-colors',
                 selectedTool === tool.id
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-600',
+                  ? 'border-primary bg-background-oat dark:bg-blue-900/20'
+                  : 'border-border-default hover:border-border-default dark:border-gray-600',
               )}
               title={tool.desc}>
               <span className="text-sm">
@@ -722,12 +726,12 @@ const SimpleTextModule = () => {
           value={inputText}
           onChange={e => setInputText(e.target.value)}
           placeholder="在此输入或粘贴文本..."
-          className="h-20 w-full resize-none rounded border border-gray-200 bg-white p-2 dark:border-gray-600 dark:bg-gray-800"
+          className="border-border-default bg-background-main dark:bg-background-dark h-20 w-full resize-none rounded border p-2 dark:border-gray-600"
         />
         <button
           onClick={processText}
           disabled={!inputText.trim() || !selectedTool}
-          className="mt-2 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400">
+          className="bg-primary hover:bg-background-clay theme-btn-primary mt-2 w-full rounded px-4 py-2 text-white disabled:bg-gray-400">
           开始处理
         </button>
       </div>
@@ -736,11 +740,13 @@ const SimpleTextModule = () => {
       <div className="flex-1 overflow-auto">
         {outputText ? (
           <div className="flex h-full flex-col">
-            <h3 className="mb-2 text-sm font-medium">处理结果</h3>
-            <pre className="flex-1 overflow-auto rounded bg-gray-100 p-3 text-sm dark:bg-gray-800">{outputText}</pre>
+            <h3 className="theme-text-main mb-2 text-sm font-medium">处理结果</h3>
+            <pre className="bg-background-ivory-medium dark:bg-background-dark flex-1 overflow-auto rounded p-3 text-sm">
+              {outputText}
+            </pre>
           </div>
         ) : (
-          <div className="py-8 text-center text-gray-500">
+          <div className="text-text-faded py-8 text-center">
             <div className="mb-2 text-4xl">📝</div>
             <p>选择工具并输入文本开始处理</p>
           </div>
@@ -923,30 +929,30 @@ const CopyTitleModule = () => {
 
   return (
     <div className="flex h-full flex-col p-4">
-      <h2 className="mb-4 text-lg font-semibold">复制标题</h2>
+      <h2 className="theme-text-main mb-4 text-lg font-semibold">复制标题</h2>
 
       {/* 当前页面信息 */}
-      <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800">
+      <div className="border-border-default dark:bg-background-dark mb-4 rounded border bg-gray-50 p-3 dark:border-gray-600">
         <div className="mb-2">
-          <label className="block text-xs text-gray-600 dark:text-gray-400">当前标题</label>
+          <label className="text-text-faded block text-xs dark:text-gray-400">当前标题</label>
           <p className="text-sm font-medium">{currentTitle || '加载中...'}</p>
         </div>
         <div>
-          <label className="block text-xs text-gray-600 dark:text-gray-400">当前网址</label>
-          <p className="text-sm text-gray-700 dark:text-gray-300">{currentUrl || '加载中...'}</p>
+          <label className="text-text-faded block text-xs dark:text-gray-400">当前网址</label>
+          <p className="text-text-main text-sm dark:text-gray-300">{currentUrl || '加载中...'}</p>
         </div>
       </div>
 
       {/* 复制反馈 */}
       {copyFeedback && (
-        <div className="mb-4 rounded bg-green-50 p-2 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
+        <div className="bg-swatch-cactus/10 text-swatch-cactus mb-4 rounded p-2 text-sm dark:bg-green-900/20 dark:text-green-300">
           {copyFeedback}
         </div>
       )}
 
       {/* 格式选择和复制 */}
       <div className="mb-4">
-        <h3 className="mb-2 text-sm font-medium">选择复制格式</h3>
+        <h3 className="theme-text-main mb-2 text-sm font-medium">选择复制格式</h3>
         <div className="space-y-3">
           {/* 格式选择器 */}
           <div>
@@ -964,9 +970,9 @@ const CopyTitleModule = () => {
           </div>
 
           {/* 预览 */}
-          <div className="rounded bg-gray-100 p-3 dark:bg-gray-800">
-            <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">预览</label>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
+          <div className="bg-background-ivory-medium dark:bg-background-dark rounded p-3">
+            <label className="text-text-faded mb-1 block text-xs dark:text-gray-400">预览</label>
+            <p className="text-text-main text-sm dark:text-gray-300">
               {previewText(
                 selectedFormat === 'custom' ? customFormat : formats.find(f => f.id === selectedFormat)?.template || '',
               )}
@@ -977,7 +983,7 @@ const CopyTitleModule = () => {
           <button
             onClick={copySelectedFormat}
             disabled={!currentTitle || !currentUrl}
-            className="w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400">
+            className="bg-primary hover:bg-background-clay theme-btn-primary w-full rounded px-4 py-2 text-white disabled:bg-gray-400">
             📋 复制选中格式
           </button>
         </div>
@@ -985,7 +991,7 @@ const CopyTitleModule = () => {
 
       {/* 快捷键说明 */}
       <div className="mb-4">
-        <div className="rounded bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+        <div className="bg-background-oat rounded p-3 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
           <div className="mb-1 font-medium">💡 使用说明</div>
           <div>
             • 使用上方下拉菜单选择复制格式
@@ -994,7 +1000,7 @@ const CopyTitleModule = () => {
             <br />• 如需修改快捷键，
             <button
               onClick={() => chrome.tabs.create({ url: 'chrome://extensions/configureCommands' })}
-              className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400">
+              className="text-primary underline hover:text-blue-800 dark:text-blue-400">
               点此打开设置页面
             </button>
           </div>
@@ -1005,10 +1011,10 @@ const CopyTitleModule = () => {
       {Object.entries(shortcuts || {}).map(([command, config]) => (
         <div
           key={command}
-          className="mb-4 flex items-center justify-between rounded border border-gray-200 p-3 dark:border-gray-600">
+          className="border-border-default mb-4 flex items-center justify-between rounded border p-3 dark:border-gray-600">
           <div className="flex items-center space-x-2">
             <span className="text-sm">{config.description}</span>
-            <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+            <span className="text-primary rounded bg-blue-100 px-2 py-1 text-xs dark:bg-blue-900/20 dark:text-blue-400">
               {getShortcutText(command)}
             </span>
           </div>
@@ -1019,7 +1025,7 @@ const CopyTitleModule = () => {
               onChange={e => toggleShortcut(command, e.target.checked)}
               className="mr-2"
             />
-            <span className="text-xs text-gray-600 dark:text-gray-400">启用</span>
+            <span className="text-text-faded text-xs dark:text-gray-400">启用</span>
           </label>
         </div>
       ))}
@@ -1030,7 +1036,7 @@ const CopyTitleModule = () => {
           <h3 className="text-sm font-medium">自定义格式</h3>
           <button
             onClick={() => setShowCustomFormat(!showCustomFormat)}
-            className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600">
+            className="bg-background-ivory-medium text-text-faded hover:bg-swatch-cloud-light rounded px-2 py-1 text-xs dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600">
             {showCustomFormat ? '隐藏' : '设置'}
           </button>
         </div>
@@ -1040,15 +1046,15 @@ const CopyTitleModule = () => {
               value={customFormat}
               onChange={e => setCustomFormat(e.target.value)}
               placeholder="输入自定义格式，使用 {title} 和 {url} 作为占位符"
-              className="w-full rounded border border-gray-300 p-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              className="border-border-default dark:bg-background-dark w-full rounded border p-2 text-sm dark:border-gray-600"
               rows={3}
             />
             <button
               onClick={saveCustomFormat}
-              className="w-full rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">
+              className="bg-swatch-cactus hover:bg-swatch-olive theme-btn-cactus w-full rounded px-3 py-1 text-sm text-white">
               💾 保存格式
             </button>
-            <div className="text-xs text-gray-500">
+            <div className="text-text-faded text-xs">
               <p>
                 <strong>可用占位符:</strong>
               </p>
@@ -1307,7 +1313,7 @@ const DeveloperModule = () => {
 
   return (
     <div className="flex h-full flex-col p-4">
-      <h2 className="mb-4 text-lg font-semibold">开发者工具</h2>
+      <h2 className="theme-text-main mb-4 text-lg font-semibold">开发者工具</h2>
 
       {/* 命令输入区域 */}
       <div className="mb-4">
@@ -1322,30 +1328,30 @@ const DeveloperModule = () => {
             onChange={e => setCommandInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="输入命令，例如: /help 或 /detectForms"
-            className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+            className="border-border-default dark:bg-background-dark flex-1 rounded border px-3 py-2 text-sm dark:border-gray-600"
             disabled={isExecuting}
           />
           <button
             onClick={executeCommand}
             disabled={!commandInput.trim() || isExecuting}
-            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-gray-400">
+            className="bg-primary hover:bg-background-clay theme-btn-primary rounded px-4 py-2 text-sm text-white disabled:bg-gray-400">
             {isExecuting ? '执行中...' : '执行'}
           </button>
         </div>
-        <p className="mt-1 text-xs text-gray-500">按 Enter 键快速执行命令</p>
+        <p className="text-text-faded mt-1 text-xs">按 Enter 键快速执行命令</p>
       </div>
 
       {/* 示例命令 */}
       <div className="mb-4">
-        <h3 className="mb-2 text-sm font-medium">示例命令</h3>
+        <h3 className="theme-text-main mb-2 text-sm font-medium">示例命令</h3>
         <div className="grid grid-cols-1 gap-2">
           {exampleCommands.map((example, index) => (
             <button
               key={index}
               onClick={() => insertExampleCommand(example.command)}
-              className="rounded border border-gray-200 p-2 text-left text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800">
-              <code className="font-mono text-blue-600 dark:text-blue-400">{example.command}</code>
-              <p className="mt-1 text-gray-600 dark:text-gray-400">{example.description}</p>
+              className="border-border-default dark:hover:bg-background-dark rounded border p-2 text-left text-xs hover:bg-gray-50 dark:border-gray-600">
+              <code className="text-primary font-mono dark:text-blue-400">{example.command}</code>
+              <p className="text-text-faded mt-1 dark:text-gray-400">{example.description}</p>
             </button>
           ))}
         </div>
@@ -1358,31 +1364,31 @@ const DeveloperModule = () => {
           {commandHistory.length > 0 && (
             <button
               onClick={clearHistory}
-              className="rounded bg-red-100 px-2 py-1 text-xs text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
+              className="bg-background-clay/20 text-background-clay hover:bg-background-clay/30 rounded px-2 py-1 text-xs dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
               清空
             </button>
           )}
         </div>
 
         {commandHistory.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">
+          <div className="text-text-faded py-8 text-center">
             <div className="mb-2 text-4xl">⌨️</div>
             <p>输入命令开始使用开发者工具</p>
           </div>
         ) : (
           <div className="space-y-3">
             {commandHistory.map((entry, index) => (
-              <div key={index} className="rounded border border-gray-200 p-3 dark:border-gray-600">
+              <div key={index} className="border-border-default rounded border p-3 dark:border-gray-600">
                 <div className="mb-2 flex items-center justify-between">
-                  <code className="font-mono text-sm text-blue-600 dark:text-blue-400">{entry.input}</code>
-                  <span className="text-xs text-gray-500">{entry.timestamp}</span>
+                  <code className="text-primary font-mono text-sm dark:text-blue-400">{entry.input}</code>
+                  <span className="text-text-faded text-xs">{entry.timestamp}</span>
                 </div>
                 <div
                   className={cn(
                     'rounded p-2 text-sm',
                     entry.result.success
-                      ? 'bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300'
-                      : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300',
+                      ? 'bg-swatch-cactus/10 text-swatch-cactus dark:bg-green-900/20 dark:text-green-300'
+                      : 'bg-background-clay/10 text-background-clay dark:bg-red-900/20 dark:text-red-300',
                   )}>
                   <div className="flex items-start">
                     <span className="mr-2 text-lg">{entry.result.success ? '✅' : '❌'}</span>
@@ -1423,9 +1429,14 @@ const SidePanel = () => {
 
   return (
     <div
-      className={cn('flex h-screen w-full flex-col', isLight ? 'bg-white text-gray-900' : 'bg-gray-900 text-gray-100')}>
+      className={cn(
+        'theme-bg-main theme-text-main flex h-screen w-full flex-col',
+        isLight
+          ? 'bg-background-main text-text-main theme-bg-main theme-text-main'
+          : 'bg-background-dark text-background-main theme-bg-dark theme-text-main',
+      )}>
       {/* 导航标签 */}
-      <nav className="flex border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <nav className="border-border-default bg-background-main dark:border-border-default dark:bg-background-dark theme-bg-main theme-border-default flex border-b">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -1433,8 +1444,8 @@ const SidePanel = () => {
             className={cn(
               'flex min-h-[60px] flex-1 flex-col items-center justify-center px-1 py-2 text-xs font-medium transition-colors',
               activeTab === tab.id
-                ? 'border-b-2 border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300',
+                ? 'border-primary bg-background-oat text-primary dark:bg-primary/20 dark:text-primary theme-border-primary theme-bg-oat theme-text-primary border-b-2'
+                : 'text-text-faded hover:text-text-main dark:text-text-faded dark:hover:text-background-main',
             )}>
             <span className="mb-1 text-xl">{tab.icon}</span>
             <span className="text-xs leading-tight">{tab.name}</span>
@@ -1452,7 +1463,7 @@ const SidePanel = () => {
           <div className="p-4 text-center">
             <div className="mb-4 text-4xl">🚧</div>
             <h3 className="mb-2 text-lg font-medium">{tabs.find(t => t.id === activeTab)?.name}</h3>
-            <p className="text-gray-600 dark:text-gray-400">功能开发中...</p>
+            <p className="text-text-faded dark:text-gray-400">功能开发中...</p>
           </div>
         )}
       </main>
