@@ -1,7 +1,7 @@
 import { ElementSelector, FormDetector, FormFiller, ElementMarker } from '@extension/shared';
 import type { FormFillRequest } from '@extension/shared';
 
-console.log('[LovpenSider] Content script loaded');
+console.debug('[LovpenSider] Content script loaded');
 
 class LovpenSiderElementSelector extends ElementSelector {
   protected onElementSelected(): void {
