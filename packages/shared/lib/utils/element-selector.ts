@@ -39,8 +39,8 @@ export class ElementSelector {
   private options: ElementSelectorOptions;
   private defaultPresets: SitePreset[] = [
     {
-      patterns: ['https://mp.weixin.qq.com/s/'],
-      selectors: ['#page-content'],
+      patterns: ['https://mp.weixin.qq.com/s/', 'mp.weixin.qq.com/s/'],
+      selectors: ['#img-content'],
       priority: 10,
     },
     {
@@ -81,13 +81,16 @@ export class ElementSelector {
   ];
 
   constructor(options: ElementSelectorOptions = {}) {
+    // 合并预设，用户预设优先级更高
+    const mergedPresets = [...this.defaultPresets, ...(options.sitePresets || [])];
+
     this.options = {
       enableNavigation: true,
       showStatusMessages: true,
       highlightColor: '#3b82f6',
       highlightOpacity: 0.1,
-      sitePresets: [...this.defaultPresets, ...(options.sitePresets || [])],
       ...options,
+      sitePresets: mergedPresets,
     };
 
     this.markdownConverter = new MarkdownConverter();
@@ -429,8 +432,11 @@ export class ElementSelector {
 
   // 智能选择功能
   smartSelect(): void {
+    console.log('[ElementSelector] 开始智能选择');
     const mainContent = this.findMainContentElement();
+
     if (mainContent) {
+      console.log('[ElementSelector] 智能选择成功，选中元素:', mainContent);
       this.selectedElement = mainContent;
 
       if (this.options.enableNavigation) {
@@ -439,6 +445,8 @@ export class ElementSelector {
         this.highlightSelectedElement();
         this.onElementSelected(mainContent);
       }
+    } else {
+      console.log('[ElementSelector] 智能选择失败，未找到合适的内容元素');
     }
   }
 
@@ -455,31 +463,63 @@ export class ElementSelector {
   }
 
   private findElementByPresets(): Element | null {
+    console.log('[ElementSelector] 开始查找预设元素');
+
     if (!this.options.sitePresets || this.options.sitePresets.length === 0) {
+      console.log('[ElementSelector] 没有配置预设');
       return null;
     }
 
     const currentUrl = window.location.href;
+    console.log('[ElementSelector] 当前URL:', currentUrl);
+    console.log('[ElementSelector] 可用预设数量:', this.options.sitePresets.length);
 
     // 按优先级排序预设
     const sortedPresets = [...this.options.sitePresets].sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     for (const preset of sortedPresets) {
       // 检查URL是否匹配任何模式
-      const isMatch = preset.patterns.some(pattern => currentUrl.includes(pattern));
+      const matchedPattern = preset.patterns.find(pattern => currentUrl.includes(pattern));
+      const isMatch = !!matchedPattern;
 
       if (isMatch) {
+        console.log(`[ElementSelector] URL匹配预设模式: ${matchedPattern}`);
+        console.log(`[ElementSelector] 尝试选择器列表:`, preset.selectors);
+
         // 尝试每个选择器
         for (const selector of preset.selectors) {
           const element = document.querySelector(selector);
-          if (element && this.isValidContentElement(element)) {
-            console.log(`使用预设选择器: ${selector} (匹配模式: ${preset.patterns.join(', ')})`);
-            return element;
+
+          if (element) {
+            console.log(`[ElementSelector] 找到元素: ${selector}`);
+            const isValid = this.isValidContentElement(element);
+            console.log(`[ElementSelector] 元素验证结果: ${isValid}`);
+
+            if (!isValid) {
+              const rect = element.getBoundingClientRect();
+              const textContent = element.textContent?.trim() || '';
+              const style = window.getComputedStyle(element);
+              console.log(`[ElementSelector] 元素验证失败原因:`, {
+                width: rect.width,
+                height: rect.height,
+                textLength: textContent.length,
+                display: style.display,
+                visibility: style.visibility,
+              });
+            }
+
+            if (isValid) {
+              console.log(`[ElementSelector] ✅ 使用预设选择器: ${selector} (匹配模式: ${preset.patterns.join(', ')})`);
+              return element;
+            }
+          } else {
+            console.log(`[ElementSelector] 未找到元素: ${selector}`);
           }
         }
       }
     }
 
+    console.log('[ElementSelector] 没有找到匹配的预设元素，将使用智能检测');
     return null;
   }
 
