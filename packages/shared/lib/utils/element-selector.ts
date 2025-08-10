@@ -8,11 +8,18 @@ export interface ElementSelectionResult {
   domPath: string;
 }
 
+export interface SitePreset {
+  patterns: string[];
+  selectors: string[];
+  priority?: number;
+}
+
 export interface ElementSelectorOptions {
   enableNavigation?: boolean;
   showStatusMessages?: boolean;
   highlightColor?: string;
   highlightOpacity?: number;
+  sitePresets?: SitePreset[];
 }
 
 export class ElementSelector {
@@ -30,6 +37,48 @@ export class ElementSelector {
 
   private markdownConverter: MarkdownConverter;
   private options: ElementSelectorOptions;
+  private defaultPresets: SitePreset[] = [
+    {
+      patterns: ['https://mp.weixin.qq.com/s/'],
+      selectors: ['#page-content'],
+      priority: 10,
+    },
+    {
+      patterns: ['zhihu.com/question', 'zhihu.com/p/'],
+      selectors: ['.Post-RichTextContainer', '.QuestionAnswer-content', '.RichContent-inner'],
+      priority: 10,
+    },
+    {
+      patterns: ['juejin.cn/post', 'juejin.im/post'],
+      selectors: ['.article-content', '.markdown-body'],
+      priority: 10,
+    },
+    {
+      patterns: ['medium.com'],
+      selectors: ['article', '.meteredContent', 'main article'],
+      priority: 10,
+    },
+    {
+      patterns: ['dev.to'],
+      selectors: ['#article-body', '.crayons-article__body'],
+      priority: 10,
+    },
+    {
+      patterns: ['stackoverflow.com/questions'],
+      selectors: ['.answercell', '.question', '.post-text'],
+      priority: 10,
+    },
+    {
+      patterns: ['github.com'],
+      selectors: ['.markdown-body', '#readme', '.comment-body'],
+      priority: 10,
+    },
+    {
+      patterns: ['wikipedia.org/wiki'],
+      selectors: ['#mw-content-text', '.mw-parser-output'],
+      priority: 10,
+    },
+  ];
 
   constructor(options: ElementSelectorOptions = {}) {
     this.options = {
@@ -37,6 +86,7 @@ export class ElementSelector {
       showStatusMessages: true,
       highlightColor: '#3b82f6',
       highlightOpacity: 0.1,
+      sitePresets: [...this.defaultPresets, ...(options.sitePresets || [])],
       ...options,
     };
 
@@ -393,9 +443,44 @@ export class ElementSelector {
   }
 
   private findMainContentElement(): Element | null {
-    // 智能内容检测算法
+    // 首先尝试使用网站预设
+    const presetElement = this.findElementByPresets();
+    if (presetElement) {
+      return presetElement;
+    }
+
+    // 如果没有预设匹配，使用智能内容检测算法
     const candidates = this.getContentCandidates();
     return this.rankContentCandidates(candidates);
+  }
+
+  private findElementByPresets(): Element | null {
+    if (!this.options.sitePresets || this.options.sitePresets.length === 0) {
+      return null;
+    }
+
+    const currentUrl = window.location.href;
+
+    // 按优先级排序预设
+    const sortedPresets = [...this.options.sitePresets].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+    for (const preset of sortedPresets) {
+      // 检查URL是否匹配任何模式
+      const isMatch = preset.patterns.some(pattern => currentUrl.includes(pattern));
+
+      if (isMatch) {
+        // 尝试每个选择器
+        for (const selector of preset.selectors) {
+          const element = document.querySelector(selector);
+          if (element && this.isValidContentElement(element)) {
+            console.log(`使用预设选择器: ${selector} (匹配模式: ${preset.patterns.join(', ')})`);
+            return element;
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   private getContentCandidates(): Element[] {
