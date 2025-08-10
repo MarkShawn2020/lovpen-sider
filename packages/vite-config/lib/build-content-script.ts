@@ -68,7 +68,7 @@ const builds = async ({ srcDir, contentName, rootDir, matchesDir, withTw }: ICon
         ['--input']: resolve(folder, 'index.css'),
         ['--output']: resolve(rootDir, 'dist', name, 'index.css'),
         ['--config']: resolve(rootDir, 'tailwind.config.ts'),
-        ['--watch']: IS_DEV,
+        ...(IS_DEV && { ['--watch']: true }),
       };
 
       await buildTW(args);

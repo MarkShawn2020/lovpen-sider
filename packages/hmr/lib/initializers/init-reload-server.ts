@@ -6,48 +6,53 @@ import {
   LOCAL_RELOAD_SOCKET_URL,
 } from '../consts.js';
 import MessageInterpreter from '../interpreter/index.js';
+import { IS_DEV } from '@extension/env';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 
 const clientsThatNeedToUpdate: Set<WebSocket> = new Set();
 
-(() => {
-  const wss = new WebSocketServer({ port: LOCAL_RELOAD_SOCKET_PORT });
+if (IS_DEV) {
+  (() => {
+    const wss = new WebSocketServer({ port: LOCAL_RELOAD_SOCKET_PORT });
 
-  wss.on('listening', () => {
-    console.log(`[HMR] Server listening at ${LOCAL_RELOAD_SOCKET_URL}`);
-  });
-
-  wss.on('connection', ws => {
-    clientsThatNeedToUpdate.add(ws);
-
-    ws.addEventListener('close', () => {
-      clientsThatNeedToUpdate.delete(ws);
+    wss.on('listening', () => {
+      console.log(`[HMR] Server listening at ${LOCAL_RELOAD_SOCKET_URL}`);
     });
 
-    ws.addEventListener('message', event => {
-      if (typeof event.data !== 'string') return;
+    wss.on('connection', ws => {
+      clientsThatNeedToUpdate.add(ws);
 
-      const message = MessageInterpreter.receive(event.data);
+      ws.addEventListener('close', () => {
+        clientsThatNeedToUpdate.delete(ws);
+      });
 
-      if (message.type === DONE_UPDATE) {
-        ws.close();
-      }
+      ws.addEventListener('message', event => {
+        if (typeof event.data !== 'string') return;
 
-      if (message.type === BUILD_COMPLETE) {
-        clientsThatNeedToUpdate.forEach((ws: WebSocket) =>
-          ws.send(MessageInterpreter.send({ type: DO_UPDATE, id: message.id })),
+        const message = MessageInterpreter.receive(event.data);
+
+        if (message.type === DONE_UPDATE) {
+          ws.close();
+        }
+
+        if (message.type === BUILD_COMPLETE) {
+          clientsThatNeedToUpdate.forEach((ws: WebSocket) =>
+            ws.send(MessageInterpreter.send({ type: DO_UPDATE, id: message.id })),
+          );
+        }
+      });
+    });
+
+    wss.on('error', (error: Error & { code: string }) => {
+      if (error.code === 'EADDRINUSE') {
+        console.info(
+          `[HMR] Server already running at ${LOCAL_RELOAD_SOCKET_URL}, skipping reload server initialization`,
         );
+      } else {
+        console.error(`[HMR] Failed to start server at ${LOCAL_RELOAD_SOCKET_URL}`);
+        throw error;
       }
     });
-  });
-
-  wss.on('error', (error: Error & { code: string }) => {
-    if (error.code === 'EADDRINUSE') {
-      console.info(`[HMR] Server already running at ${LOCAL_RELOAD_SOCKET_URL}, skipping reload server initialization`);
-    } else {
-      console.error(`[HMR] Failed to start server at ${LOCAL_RELOAD_SOCKET_URL}`);
-      throw error;
-    }
-  });
-})();
+  })();
+}
