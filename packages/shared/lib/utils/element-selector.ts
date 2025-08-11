@@ -28,6 +28,8 @@ export class ElementSelector {
   private isNavigatingMode = false;
   private markdownUpdateTimer: NodeJS.Timeout | null = null;
   private originalStyles = new Map<Element, { outline: string; backgroundColor: string }>();
+  // 记录父节点最后访问的子节点，用于导航时返回原位置
+  private lastVisitedChild = new WeakMap<Element, Element>();
 
   private mouseOverHandler?: (e: MouseEvent) => void;
   private mouseOutHandler?: (e: MouseEvent) => void;
@@ -250,10 +252,22 @@ export class ElementSelector {
     switch (e.key) {
       case 'ArrowUp':
         newElement = this.selectedElement.parentElement;
+        // 记录当前节点作为父节点的最后访问子节点
+        if (newElement) {
+          this.lastVisitedChild.set(newElement, this.selectedElement);
+        }
         break;
-      case 'ArrowDown':
-        newElement = this.selectedElement.firstElementChild;
+      case 'ArrowDown': {
+        // 优先返回之前记录的子节点，如果没有则返回第一个子节点
+        const lastChild = this.lastVisitedChild.get(this.selectedElement);
+        if (lastChild && this.selectedElement.contains(lastChild)) {
+          // 确保记录的子节点仍然是当前元素的子节点
+          newElement = lastChild;
+        } else {
+          newElement = this.selectedElement.firstElementChild;
+        }
         break;
+      }
       case 'ArrowLeft':
         newElement = this.selectedElement.previousElementSibling;
         break;

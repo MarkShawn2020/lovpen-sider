@@ -141,6 +141,8 @@ const SimpleCaptureModule = () => {
   const [currentUrl, setCurrentUrl] = useState('');
   const [showDownloadSettings, setShowDownloadSettings] = useState(false);
   const [showPresetsPanel, setShowPresetsPanel] = useState(false);
+  const [domPathCopied, setDomPathCopied] = useState(false);
+  const [markdownCopied, setMarkdownCopied] = useState(false);
 
   // 初始化和URL监听
   useEffect(() => {
@@ -305,7 +307,8 @@ const SimpleCaptureModule = () => {
 
     try {
       await navigator.clipboard.writeText(markdownOutput);
-      // 可以添加一个简单的提示
+      setMarkdownCopied(true);
+      setTimeout(() => setMarkdownCopied(false), 2000);
     } catch (error) {
       console.error('复制失败:', error);
     }
@@ -442,7 +445,8 @@ const SimpleCaptureModule = () => {
 
     try {
       await navigator.clipboard.writeText(domPath);
-      // 可以添加一个简单的提示
+      setDomPathCopied(true);
+      setTimeout(() => setDomPathCopied(false), 2000);
     } catch (error) {
       console.error('复制DOM路径失败:', error);
     }
@@ -534,29 +538,30 @@ const SimpleCaptureModule = () => {
     <div className="flex h-full flex-col p-4">
       <h2 className="theme-text-main mb-4 text-lg font-semibold">页面捕获</h2>
 
-      <div className="mb-4 space-y-2">
-        <div className="flex space-x-2">
+      <div className="mb-4">
+        <div className="flex gap-2">
           {!isSelecting ? (
             <button
               onClick={startSelection}
-              className="bg-primary hover:bg-background-clay theme-btn-primary flex-1 rounded px-4 py-2 text-white">
+              className="bg-primary hover:bg-background-clay theme-btn-primary flex-1 rounded px-3 py-2 text-sm text-white">
               🎯 开始选择元素
             </button>
           ) : (
             <button
               onClick={stopSelection}
-              className="bg-background-clay hover:bg-primary theme-btn-clay flex-1 rounded px-4 py-2 text-white">
+              className="bg-background-clay hover:bg-primary theme-btn-clay flex-1 rounded px-3 py-2 text-sm text-white">
               ⏹️ 停止选择
             </button>
           )}
           <button
             onClick={smartSelect}
-            className="bg-swatch-cactus hover:bg-swatch-olive theme-btn-cactus flex-1 rounded px-4 py-2 text-white">
+            className="bg-swatch-cactus hover:bg-swatch-olive theme-btn-cactus flex-1 rounded px-3 py-2 text-sm text-white">
             🤖 智能选择
           </button>
           <button
             onClick={() => setShowPresetsPanel(!showPresetsPanel)}
-            className="bg-background-ivory-medium hover:bg-swatch-cloud-light text-text-main rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+            className="bg-background-ivory-medium hover:bg-swatch-cloud-light text-text-main flex-shrink-0 rounded p-2 text-sm dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+            title="预设配置">
             ⚙️
           </button>
         </div>
@@ -567,30 +572,31 @@ const SimpleCaptureModule = () => {
 
       {/* DOM路径显示 */}
       {domPath && (
-        <div className="border-border-default mb-4 rounded border p-3 dark:border-gray-600">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="border-border-default mb-4 overflow-hidden rounded border p-3 dark:border-gray-600">
+          <div className="mb-2 flex items-start justify-between">
             <h3 className="text-sm font-medium">DOM路径</h3>
-            <div className="flex space-x-1">
-              <button
-                onClick={() => applyDomPath(domPath)}
-                className="bg-swatch-cactus/20 text-swatch-cactus hover:bg-swatch-cactus/30 rounded px-2 py-1 text-xs dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
-                🎯 选中
-              </button>
+            <div className="flex flex-shrink-0 space-x-1">
               <button
                 onClick={copyDomPath}
-                className="bg-background-ivory-medium text-text-main hover:bg-swatch-cloud-light rounded px-2 py-1 text-xs dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                📋 复制
+                className={`rounded p-1.5 transition-all duration-200 ${
+                  domPathCopied
+                    ? 'bg-green-500 text-white'
+                    : 'bg-background-ivory-medium text-text-main hover:bg-swatch-cloud-light dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title={domPathCopied ? '已复制!' : '复制路径'}>
+                {domPathCopied ? '✓' : '📋'}
               </button>
               <button
                 onClick={startEditPath}
-                className="text-background-clay rounded bg-blue-100 px-2 py-1 text-xs hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
-                ✏️ 编辑
+                className="text-background-clay rounded bg-blue-100 p-1.5 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
+                title="编辑路径">
+                ✏️
               </button>
             </div>
           </div>
 
           {!isEditingPath ? (
-            <code className="bg-background-ivory-medium text-text-main dark:bg-background-dark block rounded p-2 text-xs dark:text-gray-300">
+            <code className="bg-background-ivory-medium text-text-main dark:bg-background-dark block break-all rounded p-2 font-mono text-xs dark:text-gray-300">
               {domPath}
             </code>
           ) : (
@@ -623,28 +629,36 @@ const SimpleCaptureModule = () => {
       <div className="flex-1 overflow-auto">
         {markdownOutput ? (
           <div className="flex h-full flex-col">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-start justify-between">
               <h3 className="text-sm font-medium">Markdown内容</h3>
-              <div className="flex space-x-2">
+              <div className="flex flex-shrink-0 gap-1">
                 <button
                   onClick={downloadMarkdown}
-                  className="bg-swatch-cactus/20 text-swatch-cactus hover:bg-swatch-cactus/30 rounded px-3 py-1 text-sm dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
-                  📥 下载
+                  className="bg-swatch-cactus/20 text-swatch-cactus hover:bg-swatch-cactus/30 rounded p-1.5 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800"
+                  title="下载">
+                  📥
                 </button>
                 <button
                   onClick={() => setShowDownloadSettings(!showDownloadSettings)}
-                  className="text-background-clay rounded bg-blue-100 px-2 py-1 text-sm hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
+                  className="text-background-clay rounded bg-blue-100 p-1.5 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
+                  title="下载设置">
                   ⚙️
                 </button>
                 <button
                   onClick={copyToClipboard}
-                  className="bg-background-ivory-medium text-text-main hover:bg-swatch-cloud-light rounded px-3 py-1 text-sm dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                  📋 复制
+                  className={`rounded p-1.5 transition-all duration-200 ${
+                    markdownCopied
+                      ? 'bg-green-500 text-white'
+                      : 'bg-background-ivory-medium text-text-main hover:bg-swatch-cloud-light dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                  title={markdownCopied ? '已复制!' : '复制'}>
+                  {markdownCopied ? '✓' : '📋'}
                 </button>
                 <button
                   onClick={clearContent}
-                  className="bg-background-clay/20 text-background-clay hover:bg-background-clay/30 rounded px-3 py-1 text-sm dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800">
-                  🗑️ 清空
+                  className="bg-background-clay/20 text-background-clay hover:bg-background-clay/30 rounded p-1.5 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800"
+                  title="清空">
+                  🗑️
                 </button>
               </div>
             </div>
@@ -652,7 +666,7 @@ const SimpleCaptureModule = () => {
             {/* 下载设置面板 */}
             {showDownloadSettings && <DownloadSettingsPanel onClose={() => setShowDownloadSettings(false)} />}
 
-            <pre className="bg-background-ivory-medium dark:bg-background-dark flex-1 overflow-auto rounded p-4 text-sm">
+            <pre className="bg-background-ivory-medium dark:bg-background-dark flex-1 overflow-auto whitespace-pre-wrap break-words rounded p-4 font-mono text-xs">
               {markdownOutput}
             </pre>
           </div>
