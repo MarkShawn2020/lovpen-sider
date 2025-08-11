@@ -1,6 +1,13 @@
 import '@src/SidePanel.css';
+import { SitePresetsPanel } from './components/SitePresetsPanel';
 import { useStorage, withErrorBoundary, withSuspense, commandProcessor } from '@extension/shared';
-import { exampleThemeStorage, domPathStorage, downloadSettingsStorage, copyFormatStorage } from '@extension/storage';
+import {
+  exampleThemeStorage,
+  domPathStorage,
+  downloadSettingsStorage,
+  copyFormatStorage,
+  sitePresetsStorage,
+} from '@extension/storage';
 import { cn, ErrorDisplay, LoadingSpinner, Select } from '@extension/ui';
 import { useState, useEffect } from 'react';
 import type { CommandResult } from '@extension/shared';
@@ -133,6 +140,7 @@ const SimpleCaptureModule = () => {
   const [pathError, setPathError] = useState('');
   const [currentUrl, setCurrentUrl] = useState('');
   const [showDownloadSettings, setShowDownloadSettings] = useState(false);
+  const [showPresetsPanel, setShowPresetsPanel] = useState(false);
 
   // 初始化和URL监听
   useEffect(() => {
@@ -546,8 +554,16 @@ const SimpleCaptureModule = () => {
             className="bg-swatch-cactus hover:bg-swatch-olive theme-btn-cactus flex-1 rounded px-4 py-2 text-white">
             🤖 智能选择
           </button>
+          <button
+            onClick={() => setShowPresetsPanel(!showPresetsPanel)}
+            className="bg-background-ivory-medium hover:bg-swatch-cloud-light text-text-main rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+            ⚙️
+          </button>
         </div>
       </div>
+
+      {/* 预设配置面板 */}
+      {showPresetsPanel && <SitePresetsPanel onClose={() => setShowPresetsPanel(false)} />}
 
       {/* DOM路径显示 */}
       {domPath && (

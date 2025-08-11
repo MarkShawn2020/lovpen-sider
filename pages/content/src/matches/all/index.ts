@@ -1,7 +1,51 @@
 import { ElementSelector, FormDetector, FormFiller, ElementMarker } from '@extension/shared';
-import type { FormFillRequest } from '@extension/shared';
+import type { FormFillRequest, SitePreset } from '@extension/shared';
 
 console.debug('[LovpenSider] Content script loaded');
+
+// 内置预设（保持与SitePresetsPanel.tsx中的一致）
+const BUILT_IN_PRESETS: SitePreset[] = [
+  {
+    patterns: ['https://mp.weixin.qq.com/s/', 'mp.weixin.qq.com/s/'],
+    selectors: ['#img-content'],
+    priority: 10,
+  },
+  {
+    patterns: ['zhihu.com/question', 'zhihu.com/p/'],
+    selectors: ['.Post-RichTextContainer', '.QuestionAnswer-content', '.RichContent-inner'],
+    priority: 10,
+  },
+  {
+    patterns: ['juejin.cn/post', 'juejin.im/post'],
+    selectors: ['.article-content', '.markdown-body'],
+    priority: 10,
+  },
+  {
+    patterns: ['medium.com'],
+    selectors: ['article', '.meteredContent', 'main article'],
+    priority: 10,
+  },
+  {
+    patterns: ['dev.to'],
+    selectors: ['#article-body', '.crayons-article__body'],
+    priority: 10,
+  },
+  {
+    patterns: ['stackoverflow.com/questions'],
+    selectors: ['.answercell', '.question', '.post-text'],
+    priority: 10,
+  },
+  {
+    patterns: ['github.com'],
+    selectors: ['.markdown-body', '#readme', '.comment-body'],
+    priority: 10,
+  },
+  {
+    patterns: ['wikipedia.org/wiki'],
+    selectors: ['#mw-content-text', '.mw-parser-output'],
+    priority: 10,
+  },
+];
 
 class LovpenSiderElementSelector extends ElementSelector {
   protected onElementSelected(): void {
@@ -45,10 +89,81 @@ class LovpenSiderElementSelector extends ElementSelector {
   }
 }
 
-// 创建选择器实例
-const selector = new LovpenSiderElementSelector({
+// 创建选择器实例（初始化时先使用默认预设）
+let selector = new LovpenSiderElementSelector({
   enableNavigation: true,
   showStatusMessages: true,
+  sitePresets: BUILT_IN_PRESETS,
+});
+
+// 异步加载用户配置的预设
+async function loadUserPresets() {
+  try {
+    // 从storage获取用户配置
+    const result = await chrome.storage.local.get('site-presets-storage-key');
+    if (result['site-presets-storage-key']) {
+      const storageData = result['site-presets-storage-key'];
+      const settings = storageData.settings;
+
+      // 处理内置预设，应用覆盖并过滤禁用的
+      const enabledBuiltInPresets = BUILT_IN_PRESETS.map((preset, index) => {
+        const presetId = ['wechat', 'zhihu', 'juejin', 'medium', 'devto', 'stackoverflow', 'github', 'wikipedia'][
+          index
+        ];
+
+        // 如果被禁用，返回null
+        if (settings.disabledBuiltInPresets?.includes(presetId)) {
+          return null;
+        }
+
+        // 应用覆盖
+        const override = settings.builtInPresetOverrides?.[presetId];
+        if (override) {
+          return {
+            patterns: override.patterns || preset.patterns,
+            selectors: override.selectors || preset.selectors,
+            priority: override.priority !== undefined ? override.priority : preset.priority,
+          };
+        }
+
+        return preset;
+      }).filter((preset): preset is (typeof BUILT_IN_PRESETS)[0] => preset !== null);
+
+      // 获取启用的自定义预设
+      const enabledCustomPresets = (settings.customPresets || [])
+        .filter((preset: any) => preset.enabled)
+        .map((preset: any) => ({
+          patterns: preset.patterns,
+          selectors: preset.selectors,
+          priority: preset.priority || 10,
+        }));
+
+      // 合并预设，自定义预设优先级更高
+      const allPresets = [...enabledBuiltInPresets, ...enabledCustomPresets];
+
+      // 重新创建选择器实例
+      selector = new LovpenSiderElementSelector({
+        enableNavigation: true,
+        showStatusMessages: true,
+        sitePresets: allPresets,
+      });
+
+      console.log('[LovpenSider] 预设配置已加载，共', allPresets.length, '个预设');
+    }
+  } catch (error) {
+    console.error('[LovpenSider] 加载预设配置失败:', error);
+  }
+}
+
+// 初始化时加载用户预设
+loadUserPresets();
+
+// 监听存储变化，实时更新预设
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes['site-presets-storage-key']) {
+    console.log('[LovpenSider] 检测到预设配置变化，重新加载');
+    loadUserPresets();
+  }
 });
 
 // 创建表单处理实例
