@@ -1,4 +1,5 @@
 import '@src/SidePanel.css';
+import { EdgeSnappingPanel } from './components/EdgeSnappingPanel';
 import { SitePresetsPanel } from './components/SitePresetsPanel';
 import { useStorage, withErrorBoundary, withSuspense, commandProcessor } from '@extension/shared';
 import {
@@ -7,6 +8,7 @@ import {
   downloadSettingsStorage,
   copyFormatStorage,
   sitePresetsStorage,
+  edgeSnappingStorage,
 } from '@extension/storage';
 import { cn, ErrorDisplay, LoadingSpinner, Select } from '@extension/ui';
 import { useState, useEffect } from 'react';
@@ -1105,6 +1107,7 @@ const DeveloperModule = () => {
     [],
   );
   const [isExecuting, setIsExecuting] = useState(false);
+  const [showEdgeSnappingPanel, setShowEdgeSnappingPanel] = useState(false);
 
   // 执行命令
   const executeCommand = async () => {
@@ -1343,7 +1346,18 @@ const DeveloperModule = () => {
 
   return (
     <div className="flex h-full flex-col p-4">
-      <h2 className="theme-text-main mb-4 text-lg font-semibold">开发者工具</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="theme-text-main text-lg font-semibold">开发者工具</h2>
+        <button
+          onClick={() => setShowEdgeSnappingPanel(!showEdgeSnappingPanel)}
+          className="bg-background-ivory-medium hover:bg-swatch-cloud-light text-text-main rounded px-3 py-1.5 text-sm dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+          title="边缘吸附设置">
+          🧲 边缘吸附
+        </button>
+      </div>
+
+      {/* 边缘吸附设置面板 */}
+      {showEdgeSnappingPanel && <EdgeSnappingPanel onClose={() => setShowEdgeSnappingPanel(false)} />}
 
       {/* 命令输入区域 */}
       <div className="mb-4">

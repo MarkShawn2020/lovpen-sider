@@ -6,3 +6,5 @@ export type BaseStorageType<D> = {
   getSnapshot: () => D | null;
   subscribe: (listener: () => void) => () => void;
 };
+
+export type { EdgeSnappingConfig, EdgeSnappingStorageData } from './impl/edge-snapping-storage.js';
