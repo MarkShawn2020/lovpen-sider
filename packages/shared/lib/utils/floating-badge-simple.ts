@@ -62,17 +62,20 @@ export class FloatingBadgeSimple {
       justify-content: center;
       cursor: pointer;
       box-shadow: -2px 0 6px rgba(24, 24, 24, 0.1);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, opacity 0.3s ease;
-      transform-origin: right center;
+      transition: box-shadow 0.3s ease, opacity 0.3s ease;
       position: relative;
       outline: none;
       -webkit-tap-highlight-color: transparent;
     `;
 
-    // 设置内容
+    // 设置内容 - LovPen Logo
     this.button.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="pointer-events: none;">
-        <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+      <svg width="18" height="20" viewBox="0 0 986 1080" fill="currentColor" style="pointer-events: none;">
+        <g>
+          <path d="M281.73,892.18V281.73C281.73,126.13,155.6,0,0,0l0,0v610.44C0,766.04,126.13,892.18,281.73,892.18z"/>
+          <path d="M633.91,1080V469.56c0-155.6-126.13-281.73-281.73-281.73l0,0v610.44C352.14,953.87,478.31,1080,633.91,1080L633.91,1080z"/>
+          <path d="M704.32,91.16L704.32,91.16v563.47l0,0c155.6,0,281.73-126.13,281.73-281.73S859.92,91.16,704.32,91.16z"/>
+        </g>
       </svg>
     `;
 
@@ -80,21 +83,25 @@ export class FloatingBadgeSimple {
     const style = document.createElement('style');
     style.textContent = `
       #lovpen-simple-badge {
-        transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #lovpen-simple-badge:hover {
+        width: 64px !important;
       }
       #lovpen-simple-badge.dragging {
         transition: none !important;
       }
+      #lovpen-simple-badge.dragging:hover {
+        width: 48px !important;
+      }
       #lovpen-simple-badge button:hover:not(.dragging) {
-        transform: translateX(-8px) scale(1.05);
         box-shadow: -4px 0 12px rgba(24, 24, 24, 0.15);
       }
       #lovpen-simple-badge button:active:not(.dragging) {
-        transform: translateX(-4px);
+        opacity: 0.95;
       }
       #lovpen-simple-badge button.dragging {
         opacity: 0.9;
-        transform: translateX(-4px);
         cursor: ns-resize !important;
         box-shadow: -4px 0 16px rgba(24, 24, 24, 0.2);
       }
