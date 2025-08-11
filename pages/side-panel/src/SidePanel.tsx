@@ -1,5 +1,6 @@
 import '@src/SidePanel.css';
 import { EdgeSnappingPanel } from './components/EdgeSnappingPanel';
+import { FloatingBadgePanel } from './components/FloatingBadgePanel';
 import { SitePresetsPanel } from './components/SitePresetsPanel';
 import { useStorage, withErrorBoundary, withSuspense, commandProcessor } from '@extension/shared';
 import {
@@ -9,6 +10,7 @@ import {
   copyFormatStorage,
   sitePresetsStorage,
   edgeSnappingStorage,
+  floatingBadgeStorage,
 } from '@extension/storage';
 import { cn, ErrorDisplay, LoadingSpinner, Select } from '@extension/ui';
 import { useState, useEffect } from 'react';
@@ -264,6 +266,24 @@ const SimpleCaptureModule = () => {
       } else if (msg.action === 'navigationExited') {
         setIsSelecting(false);
         sendResponse({ success: true });
+      } else if (msg.action === 'closeSidePanelRequest') {
+        // 尝试关闭侧边栏
+        console.log('[SidePanel] Received close request');
+
+        // 方案1: 尝试 window.close()
+        try {
+          window.close();
+          sendResponse({ success: true, method: 'window.close' });
+        } catch (error) {
+          console.error('[SidePanel] window.close() failed:', error);
+
+          // 方案2: 尝试通过设置空内容来"隐藏"
+          document.body.style.display = 'none';
+          sendResponse({ success: false, error: 'Cannot close programmatically' });
+        }
+      } else if (msg.action === 'ping') {
+        // 响应 ping 请求，表示侧边栏还活着
+        sendResponse({ success: true, alive: true });
       }
     };
 
@@ -1101,6 +1121,51 @@ const CopyTitleModule = () => {
 };
 
 // 开发者工具模块
+// 工具模块
+const ToolsModule = () => {
+  const [showFloatingBadgePanel, setShowFloatingBadgePanel] = useState(false);
+  const [showEdgeSnappingPanel, setShowEdgeSnappingPanel] = useState(false);
+
+  return (
+    <div className="flex h-full flex-col p-4">
+      <h2 className="theme-text-main mb-4 text-lg font-semibold">工具箱</h2>
+
+      {/* 悬浮徽章设置 */}
+      <div className="mb-3">
+        <button
+          onClick={() => setShowFloatingBadgePanel(!showFloatingBadgePanel)}
+          className="bg-background-ivory-medium hover:bg-swatch-cloud-light text-text-main mb-2 w-full rounded px-3 py-2 text-left text-sm dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+          <span className="mr-2">🎯</span>
+          悬浮徽章设置
+        </button>
+        {showFloatingBadgePanel && <FloatingBadgePanel onClose={() => setShowFloatingBadgePanel(false)} />}
+      </div>
+
+      {/* 边缘吸附设置 */}
+      <div className="mb-3">
+        <button
+          onClick={() => setShowEdgeSnappingPanel(!showEdgeSnappingPanel)}
+          className="bg-background-ivory-medium hover:bg-swatch-cloud-light text-text-main mb-2 w-full rounded px-3 py-2 text-left text-sm dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+          <span className="mr-2">🧲</span>
+          边缘吸附设置
+        </button>
+        {showEdgeSnappingPanel && <EdgeSnappingPanel onClose={() => setShowEdgeSnappingPanel(false)} />}
+      </div>
+
+      {/* 更多工具 */}
+      <div className="bg-background-oat rounded p-3 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+        <div className="mb-1 font-medium">💡 提示</div>
+        <div>
+          • 悬浮徽章可以让您在任何页面快速打开侧边栏
+          <br />
+          • 边缘吸附功能让浮动元素自动贴合浏览器边缘
+          <br />• 更多工具功能正在开发中...
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DeveloperModule = () => {
   const [commandInput, setCommandInput] = useState('');
   const [commandHistory, setCommandHistory] = useState<{ input: string; result: CommandResult; timestamp: string }[]>(
@@ -1503,13 +1568,18 @@ const SidePanel = () => {
         {activeTab === 'copy' && <CopyTitleModule />}
         {activeTab === 'text' && <SimpleTextModule />}
         {activeTab === 'dev' && <DeveloperModule />}
-        {activeTab !== 'capture' && activeTab !== 'copy' && activeTab !== 'text' && activeTab !== 'dev' && (
-          <div className="p-4 text-center">
-            <div className="mb-4 text-4xl">🚧</div>
-            <h3 className="mb-2 text-lg font-medium">{tabs.find(t => t.id === activeTab)?.name}</h3>
-            <p className="text-text-faded dark:text-gray-400">功能开发中...</p>
-          </div>
-        )}
+        {activeTab === 'tools' && <ToolsModule />}
+        {activeTab !== 'capture' &&
+          activeTab !== 'copy' &&
+          activeTab !== 'text' &&
+          activeTab !== 'dev' &&
+          activeTab !== 'tools' && (
+            <div className="p-4 text-center">
+              <div className="mb-4 text-4xl">🚧</div>
+              <h3 className="mb-2 text-lg font-medium">{tabs.find(t => t.id === activeTab)?.name}</h3>
+              <p className="text-text-faded dark:text-gray-400">功能开发中...</p>
+            </div>
+          )}
       </main>
     </div>
   );

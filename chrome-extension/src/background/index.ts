@@ -35,6 +35,117 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (request.action === 'navigationExited') {
     sendResponse({ success: true });
+  } else if (request.action === 'openSidePanel') {
+    // 处理打开侧边栏的请求
+    if (sender.tab?.id) {
+      chrome.sidePanel
+        .open({ tabId: sender.tab.id })
+        .then(() => {
+          console.log('[LovpenSider] Side panel opened successfully');
+          // 通知所有内容脚本更新徽章状态
+          if (sender.tab?.id) {
+            chrome.tabs.sendMessage(sender.tab.id, { action: 'sidebarStateChanged', isOpen: true });
+          }
+          sendResponse({ success: true });
+        })
+        .catch(error => {
+          console.error('[LovpenSider] Failed to open side panel:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+    } else {
+      console.error('[LovpenSider] No tab ID available');
+      sendResponse({ success: false, error: 'No tab ID' });
+    }
+  } else if (request.action === 'closeSidePanel') {
+    // 处理关闭侧边栏的请求
+    if (sender.tab?.id) {
+      const tabId = sender.tab.id;
+
+      // 尝试多种方法关闭侧边栏
+      Promise.all([
+        // 方法1: 发送消息让侧边栏自行关闭
+        chrome.runtime
+          .sendMessage({ action: 'closeSidePanelRequest' })
+          .catch(err => console.log('[LovpenSider] Method 1 failed:', err)),
+
+        // 方法2: 尝试通过 setOptions 禁用侧边栏（然后立即重新启用）
+        chrome.sidePanel
+          ?.setOptions?.({
+            tabId,
+            enabled: false,
+          })
+          .then(() => {
+            // 立即重新启用，但不打开
+            setTimeout(() => {
+              chrome.sidePanel?.setOptions?.({
+                tabId,
+                enabled: true,
+              });
+            }, 100);
+          })
+          .catch(err => console.log('[LovpenSider] Method 2 failed:', err)),
+
+        // 方法3: 尝试设置空路径
+        chrome.sidePanel
+          ?.setOptions?.({
+            tabId,
+            path: 'about:blank',
+          })
+          .then(() => {
+            // 恢复正常路径
+            setTimeout(() => {
+              chrome.sidePanel?.setOptions?.({
+                tabId,
+                path: 'side-panel/index.html',
+              });
+            }, 100);
+          })
+          .catch(err => console.log('[LovpenSider] Method 3 failed:', err)),
+      ])
+        .then(() => {
+          console.log('[LovpenSider] Close panel attempts completed');
+          // 通知所有内容脚本更新徽章状态
+          if (sender.tab?.id) {
+            chrome.tabs.sendMessage(sender.tab.id, { action: 'sidebarStateChanged', isOpen: false });
+          }
+          sendResponse({ success: true });
+        })
+        .catch(error => {
+          console.error('[LovpenSider] All close methods failed:', error);
+          // 即使关闭失败，也要更新徽章状态
+          if (sender.tab?.id) {
+            chrome.tabs.sendMessage(sender.tab.id, { action: 'sidebarStateChanged', isOpen: false });
+          }
+          sendResponse({ success: false, error: 'Cannot close sidebar programmatically' });
+        });
+    } else {
+      console.error('[LovpenSider] No tab ID available');
+      sendResponse({ success: false, error: 'No tab ID' });
+    }
+  } else if (request.action === 'saveFloatingBadgeState') {
+    // 保存悬浮徽章状态
+    if (sender.tab?.url) {
+      const hostname = new URL(sender.tab.url).hostname;
+      chrome.storage.local.get('floating-badge-storage-key').then(result => {
+        const data = result['floating-badge-storage-key'] || {};
+        data.states = data.states || {};
+        data.states[hostname] = request.state;
+        chrome.storage.local.set({ 'floating-badge-storage-key': data });
+      });
+    }
+    sendResponse({ success: true });
+  } else if (request.action === 'getFloatingBadgeState') {
+    // 获取悬浮徽章状态
+    if (sender.tab?.url) {
+      const hostname = new URL(sender.tab.url).hostname;
+      chrome.storage.local.get('floating-badge-storage-key').then(result => {
+        const data = result['floating-badge-storage-key'];
+        const state = data?.states?.[hostname] || null;
+        sendResponse({ state });
+      });
+    } else {
+      sendResponse({ state: null });
+    }
   }
 
   return true; // 保持消息通道开放
@@ -45,6 +156,33 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
     // 可以在这里注入内容脚本或进行其他初始化操作
     console.log('[LovpenSider] Tab updated:', tab.url);
+  }
+});
+
+// 监听窗口焦点变化，检测侧边栏关闭
+chrome.windows.onFocusChanged.addListener(async windowId => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+
+  try {
+    // 获取当前活动标签
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      // 检查侧边栏是否打开
+      // 注意：Chrome API 没有直接的方法检查侧边栏状态
+      // 这里我们可以尝试发送消息到侧边栏，如果失败则说明已关闭
+      chrome.runtime
+        .sendMessage({ action: 'ping' })
+        .then(() => {
+          // 侧边栏响应，说明还开着
+          chrome.tabs.sendMessage(tab.id!, { action: 'sidebarStateChanged', isOpen: true });
+        })
+        .catch(() => {
+          // 侧边栏没响应，说明已关闭
+          chrome.tabs.sendMessage(tab.id!, { action: 'sidebarStateChanged', isOpen: false });
+        });
+    }
+  } catch (error) {
+    console.error('[LovpenSider] Error checking sidebar state:', error);
   }
 });
 

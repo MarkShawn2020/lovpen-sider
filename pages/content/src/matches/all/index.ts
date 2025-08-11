@@ -1,5 +1,12 @@
-import { ElementSelector, FormDetector, FormFiller, ElementMarker } from '@extension/shared';
-import type { FormFillRequest, SitePreset } from '@extension/shared';
+import {
+  ElementSelector,
+  FormDetector,
+  FormFiller,
+  ElementMarker,
+  FloatingBadge,
+  FloatingBadgeSimple,
+} from '@extension/shared';
+import type { FormFillRequest, SitePreset, FloatingBadgeConfig } from '@extension/shared';
 
 console.debug('[LovpenSider] Content script loaded');
 
@@ -512,3 +519,103 @@ chrome.runtime.onMessage.addListener(
 
 // 导出选择器实例供调试使用
 (window as unknown as { lovpenSiderSelector: typeof selector }).lovpenSiderSelector = selector;
+
+// 初始化悬浮徽章 - 极简版本
+let floatingBadge: FloatingBadgeSimple | null = null;
+
+async function initializeFloatingBadge() {
+  try {
+    // 获取当前网站的 hostname
+    const hostname = window.location.hostname;
+
+    // 从存储获取配置
+    const result = await chrome.storage.local.get('floating-badge-storage-key');
+    const storageData = result['floating-badge-storage-key'];
+
+    if (!storageData) {
+      // 使用默认配置
+      floatingBadge = new FloatingBadgeSimple();
+      floatingBadge.init();
+      return;
+    }
+
+    // 检查是否应该在当前网站显示
+    const { enabled, config, states, blacklist, whitelist, useWhitelist } = storageData;
+
+    if (!enabled) {
+      console.log('[LovpenSider] 悬浮徽章已禁用');
+      return;
+    }
+
+    // 检查黑名单
+    if (blacklist && blacklist.includes(hostname)) {
+      console.log('[LovpenSider] 当前网站在黑名单中，不显示悬浮徽章');
+      return;
+    }
+
+    // 检查白名单模式
+    if (useWhitelist && whitelist && !whitelist.includes(hostname)) {
+      console.log('[LovpenSider] 当前网站不在白名单中，不显示悬浮徽章');
+      return;
+    }
+
+    // 创建悬浮徽章 - 极简版本
+    floatingBadge = new FloatingBadgeSimple();
+    floatingBadge.init();
+
+    console.log('[LovpenSider] 悬浮徽章已初始化');
+  } catch (error) {
+    console.error('[LovpenSider] 初始化悬浮徽章失败:', error);
+  }
+}
+
+// 监听存储变化，实时更新悬浮徽章
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes['floating-badge-storage-key']) {
+    console.log('[LovpenSider] 检测到悬浮徽章配置变化');
+
+    // 销毁现有徽章
+    if (floatingBadge) {
+      floatingBadge.destroy();
+      floatingBadge = null;
+    }
+
+    // 重新初始化
+    initializeFloatingBadge();
+  }
+});
+
+// 监听来自 popup 或 sidebar 的消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'toggleFloatingBadge') {
+    if (floatingBadge) {
+      floatingBadge.toggle();
+    }
+    sendResponse({ success: true });
+  } else if (request.action === 'hideFloatingBadge') {
+    if (floatingBadge) {
+      floatingBadge.hide();
+    }
+    sendResponse({ success: true });
+  } else if (request.action === 'showFloatingBadge') {
+    if (floatingBadge) {
+      floatingBadge.show();
+    }
+    sendResponse({ success: true });
+  } else if (request.action === 'sidebarStateChanged') {
+    // 更新徽章的侧边栏状态
+    if (floatingBadge) {
+      floatingBadge.updateSidebarState(request.isOpen);
+    }
+    sendResponse({ success: true });
+  }
+  return false;
+});
+
+// 页面加载完成后初始化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeFloatingBadge);
+} else {
+  // 延迟初始化，避免影响页面加载
+  setTimeout(initializeFloatingBadge, 500);
+}

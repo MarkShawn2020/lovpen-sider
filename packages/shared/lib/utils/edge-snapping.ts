@@ -205,16 +205,19 @@ export class EdgeSnappingManager {
     // 恢复文本选择
     document.body.style.userSelect = '';
 
-    // 恢复过渡效果
+    // 先设置过渡效果，确保从当前位置平滑过渡
     this.element.style.transition = `all ${this.config.animationDuration}ms ease-out`;
 
-    // 执行边缘吸附
-    if (this.config.enableSnapping) {
-      const snapResult = this.snapToNearestEdge();
-      this.onDragEndCallbacks.forEach(callback => callback(snapResult.snapped, snapResult.edge));
-    } else {
-      this.onDragEndCallbacks.forEach(callback => callback(false, null));
-    }
+    // 延迟一帧执行吸附，确保过渡效果生效
+    requestAnimationFrame(() => {
+      // 执行边缘吸附
+      if (this.config.enableSnapping) {
+        const snapResult = this.snapToNearestEdge();
+        this.onDragEndCallbacks.forEach(callback => callback(snapResult.snapped, snapResult.edge));
+      } else {
+        this.onDragEndCallbacks.forEach(callback => callback(false, null));
+      }
+    });
   };
 
   /**
@@ -292,14 +295,18 @@ export class EdgeSnappingManager {
     document.removeEventListener('touchmove', this.handleTouchMove);
     document.removeEventListener('touchend', this.handleTouchEnd);
 
+    // 先设置过渡效果，确保从当前位置平滑过渡
     this.element.style.transition = `all ${this.config.animationDuration}ms ease-out`;
 
-    if (this.config.enableSnapping) {
-      const snapResult = this.snapToNearestEdge();
-      this.onDragEndCallbacks.forEach(callback => callback(snapResult.snapped, snapResult.edge));
-    } else {
-      this.onDragEndCallbacks.forEach(callback => callback(false, null));
-    }
+    // 延迟一帧执行吸附，确保过渡效果生效
+    requestAnimationFrame(() => {
+      if (this.config.enableSnapping) {
+        const snapResult = this.snapToNearestEdge();
+        this.onDragEndCallbacks.forEach(callback => callback(snapResult.snapped, snapResult.edge));
+      } else {
+        this.onDragEndCallbacks.forEach(callback => callback(false, null));
+      }
+    });
   };
 
   /**

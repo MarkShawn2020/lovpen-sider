@@ -9,6 +9,11 @@ export * from './form-detector.js';
 export * from './form-filler.js';
 export * from './element-marker.js';
 export * from './edge-snapping.js';
+export * from './floating-badge.js';
+export * from './floating-badge-v2.js';
+export * from './floating-badge-v3.js';
+export * from './floating-badge-v4.js';
+export * from './floating-badge-simple.js';
 export * from '../commands/command-processor.js';
 
 // 导出storage相关功能，但不导出类型以避免冲突
