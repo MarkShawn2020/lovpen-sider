@@ -35,10 +35,10 @@ export class FloatingBadgeSimple {
     this.container.id = 'lovpen-simple-badge';
     this.container.style.cssText = `
       position: fixed;
-      right: 20px;
+      right: 0;
       top: ${this.currentY}px;
       width: 48px;
-      height: 48px;
+      height: 28px;
       z-index: 2147483647;
       user-select: none;
       -webkit-user-select: none;
@@ -51,7 +51,7 @@ export class FloatingBadgeSimple {
     this.button.style.cssText = `
       width: 100%;
       height: 100%;
-      border-radius: 50%;
+      border-radius: 14px 0 0 14px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border: none;
@@ -61,9 +61,9 @@ export class FloatingBadgeSimple {
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-      transform-origin: center center;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, width 0.2s ease;
+      transform-origin: right center;
       position: relative;
       outline: none;
       -webkit-tap-highlight-color: transparent;
@@ -71,8 +71,8 @@ export class FloatingBadgeSimple {
 
     // 设置内容
     this.button.innerHTML = `
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="pointer-events: none;">
-        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="pointer-events: none;">
+        <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
       </svg>
     `;
 
@@ -86,17 +86,17 @@ export class FloatingBadgeSimple {
         transition: none !important;
       }
       #lovpen-simple-badge button:hover:not(.dragging) {
-        transform: scale(1.1);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        transform: translateX(-6px);
+        box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
       }
       #lovpen-simple-badge button:active:not(.dragging) {
-        transform: scale(0.95);
+        transform: translateX(-3px);
       }
       #lovpen-simple-badge button.dragging {
         opacity: 0.8;
-        transform: scale(0.95);
+        transform: translateX(-3px);
         cursor: ns-resize !important;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
       }
       
       /* 拖拽时的提示动画 */
@@ -117,16 +117,16 @@ export class FloatingBadgeSimple {
         left: 50%;
         width: 0;
         height: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
+        border-radius: 14px 0 0 14px;
+        background: rgba(255, 255, 255, 0.2);
         transform: translate(-50%, -50%);
         transition: width 0.3s ease, height 0.3s ease;
         pointer-events: none;
       }
       
       #lovpen-simple-badge button.pressing::after {
-        width: 60px;
-        height: 60px;
+        width: 100%;
+        height: 100%;
       }
     `;
     document.head.appendChild(style);
@@ -379,7 +379,7 @@ export class FloatingBadgeSimple {
         const data = JSON.parse(saved);
         if (typeof data.y === 'number') {
           // 确保位置在当前视窗内
-          const maxY = window.innerHeight - 48 - 10; // 48是徽章高度
+          const maxY = window.innerHeight - 28 - 10; // 28是徽章高度
           this.currentY = Math.max(this.MIN_Y, Math.min(data.y, maxY));
         }
       }
