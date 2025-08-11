@@ -52,8 +52,8 @@ export class FloatingBadgeSimple {
       width: 100%;
       height: 100%;
       border-radius: 14px 0 0 14px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: #D97757;
+      color: #F9F9F7;
       border: none;
       padding: 0;
       margin: 0;
@@ -61,8 +61,8 @@ export class FloatingBadgeSimple {
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, width 0.2s ease;
+      box-shadow: -2px 0 6px rgba(24, 24, 24, 0.1);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, opacity 0.3s ease;
       transform-origin: right center;
       position: relative;
       outline: none;
@@ -86,17 +86,17 @@ export class FloatingBadgeSimple {
         transition: none !important;
       }
       #lovpen-simple-badge button:hover:not(.dragging) {
-        transform: translateX(-6px);
-        box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
+        transform: translateX(-8px) scale(1.05);
+        box-shadow: -4px 0 12px rgba(24, 24, 24, 0.15);
       }
       #lovpen-simple-badge button:active:not(.dragging) {
-        transform: translateX(-3px);
+        transform: translateX(-4px);
       }
       #lovpen-simple-badge button.dragging {
-        opacity: 0.8;
-        transform: translateX(-3px);
+        opacity: 0.9;
+        transform: translateX(-4px);
         cursor: ns-resize !important;
-        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+        box-shadow: -4px 0 16px rgba(24, 24, 24, 0.2);
       }
       
       /* 拖拽时的提示动画 */
@@ -118,9 +118,9 @@ export class FloatingBadgeSimple {
         width: 0;
         height: 0;
         border-radius: 14px 0 0 14px;
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(249, 249, 247, 0.15);
         transform: translate(-50%, -50%);
-        transition: width 0.3s ease, height 0.3s ease;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         pointer-events: none;
       }
       
@@ -328,9 +328,7 @@ export class FloatingBadgeSimple {
   private toggleSidebar(): void {
     this.isOpen = !this.isOpen;
     if (this.button) {
-      this.button.style.background = this.isOpen
-        ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
-        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      this.button.style.background = this.isOpen ? '#629A90' : '#D97757';
     }
 
     chrome.runtime.sendMessage({
@@ -391,9 +389,7 @@ export class FloatingBadgeSimple {
   public updateSidebarState(isOpen: boolean): void {
     this.isOpen = isOpen;
     if (this.button) {
-      this.button.style.background = isOpen
-        ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
-        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      this.button.style.background = isOpen ? '#629A90' : '#D97757';
     }
   }
 
