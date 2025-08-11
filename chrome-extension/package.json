@@ -1,6 +1,6 @@
 {
   "name": "chrome-extension",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "chrome extension - core settings",
   "type": "module",
   "private": true,
@@ -29,7 +29,7 @@
     "@extension/hmr": "workspace:*",
     "@extension/tsconfig": "workspace:*",
     "@extension/vite-config": "workspace:*",
-    "@laynezh/vite-plugin-lib-assets": "^1.1.0",
+    "@laynezh/vite-plugin-lib-assets": "^1.1.1",
     "magic-string": "^0.30.17",
     "ts-loader": "^9.5.2"
   }
